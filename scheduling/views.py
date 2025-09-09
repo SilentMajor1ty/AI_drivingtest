@@ -8,6 +8,7 @@ from django.http import JsonResponse
 from django.utils import timezone
 
 from .models import Lesson, Subject, Schedule
+from .forms import LessonForm
 from assignments.models import Notification
 
 
@@ -69,8 +70,8 @@ class LessonDetailView(LoginRequiredMixin, DetailView):
 class LessonCreateView(LoginRequiredMixin, CreateView):
     """Create new lesson - Methodist only"""
     model = Lesson
+    form_class = LessonForm
     template_name = 'scheduling/lesson_form.html'
-    fields = ['title', 'subject', 'teacher', 'student', 'start_time', 'end_time', 'description', 'zoom_link']
     success_url = reverse_lazy('scheduling:lesson_list')
     
     def dispatch(self, request, *args, **kwargs):
@@ -111,8 +112,8 @@ class LessonCreateView(LoginRequiredMixin, CreateView):
 class LessonUpdateView(LoginRequiredMixin, UpdateView):
     """Update lesson - Methodist only"""
     model = Lesson
+    form_class = LessonForm
     template_name = 'scheduling/lesson_form.html'
-    fields = ['title', 'subject', 'teacher', 'student', 'start_time', 'end_time', 'description', 'zoom_link', 'status']
     success_url = reverse_lazy('scheduling:lesson_list')
     
     def dispatch(self, request, *args, **kwargs):
