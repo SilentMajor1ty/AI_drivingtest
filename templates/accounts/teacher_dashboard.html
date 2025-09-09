@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+
+{% block title %}Teacher Dashboard - Driving School{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-person-badge"></i> Teacher Dashboard</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <small class="text-muted">Welcome back, {{ user.full_name }}</small>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-calendar-day"></i> Today's Lessons
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if today_lessons %}
+                    {% for lesson in today_lessons %}
+                        <div class="lesson-card card mb-2">
+                            <div class="card-body py-2">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <h6 class="mb-1">{{ lesson.title }}</h6>
+                                        <small class="text-muted">
+                                            <i class="bi bi-person"></i> {{ lesson.student.full_name }} |
+                                            <i class="bi bi-book"></i> {{ lesson.subject.name }}
+                                        </small>
+                                    </div>
+                                    <div class="text-end">
+                                        <small class="fw-bold">
+                                            {{ lesson.start_time|time:"H:i" }} - {{ lesson.end_time|time:"H:i" }}
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted text-center">No lessons scheduled for today.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-journal-check"></i> Recent Submissions
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if recent_submissions %}
+                    {% for assignment in recent_submissions %}
+                        <div class="card mb-2">
+                            <div class="card-body py-2">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <h6 class="mb-1">{{ assignment.title }}</h6>
+                                        <small class="text-muted">
+                                            <i class="bi bi-person"></i> {{ assignment.student.full_name }}
+                                        </small>
+                                    </div>
+                                    <div class="text-end">
+                                        <small>
+                                            <span class="badge bg-success">SUBMITTED</span>
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted text-center">No recent submissions.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,18 @@
+from django.urls import path
+from . import views
+
+app_name = 'scheduling'
+
+urlpatterns = [
+    # Calendar and lessons
+    path('calendar/', views.calendar_view, name='calendar'),
+    path('lessons/', views.LessonListView.as_view(), name='lesson_list'),
+    path('lessons/create/', views.LessonCreateView.as_view(), name='lesson_create'),
+    path('lessons/<int:pk>/', views.LessonDetailView.as_view(), name='lesson_detail'),
+    path('lessons/<int:pk>/edit/', views.LessonUpdateView.as_view(), name='lesson_edit'),
+    path('lessons/<int:pk>/rate/', views.rate_lesson, name='rate_lesson'),
+    
+    # Schedule management
+    path('schedule/', views.ScheduleView.as_view(), name='schedule'),
+    path('teacher-schedule/<int:teacher_id>/', views.teacher_schedule, name='teacher_schedule'),
+]

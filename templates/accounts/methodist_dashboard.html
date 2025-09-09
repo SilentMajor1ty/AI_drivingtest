@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+
+{% block title %}Methodist Dashboard - Driving School{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-shield-check"></i> Methodist Dashboard</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <a href="{% url 'accounts:user_create' %}" class="btn btn-sm btn-primary">
+                <i class="bi bi-plus"></i> Add User
+            </a>
+            <a href="{% url 'scheduling:lesson_create' %}" class="btn btn-sm btn-success">
+                <i class="bi bi-plus"></i> Schedule Lesson
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card card-stats">
+            <div class="card-body">
+                <div class="d-flex">
+                    <div class="flex-grow-1">
+                        <h5 class="card-title">Total Users</h5>
+                        <h2 class="text-primary">{{ total_users }}</h2>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-people fs-1 text-primary"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card card-stats">
+            <div class="card-body">
+                <div class="d-flex">
+                    <div class="flex-grow-1">
+                        <h5 class="card-title">Teachers</h5>
+                        <h2 class="text-success">{{ total_teachers }}</h2>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-person-badge fs-1 text-success"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card card-stats">
+            <div class="card-body">
+                <div class="d-flex">
+                    <div class="flex-grow-1">
+                        <h5 class="card-title">Students</h5>
+                        <h2 class="text-info">{{ total_students }}</h2>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-person-circle fs-1 text-info"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-clock-history"></i> Recent Lessons
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if recent_lessons %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Lesson</th>
+                                    <th>Teacher</th>
+                                    <th>Student</th>
+                                    <th>Subject</th>
+                                    <th>Date & Time</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for lesson in recent_lessons %}
+                                <tr>
+                                    <td>{{ lesson.title }}</td>
+                                    <td>{{ lesson.teacher.full_name }}</td>
+                                    <td>{{ lesson.student.full_name }}</td>
+                                    <td>{{ lesson.subject.name }}</td>
+                                    <td>{{ lesson.start_time|date:"M d, Y H:i" }}</td>
+                                    <td>
+                                        <span class="badge bg-{% if lesson.status == 'completed' %}success{% elif lesson.status == 'scheduled' %}primary{% else %}secondary{% endif %}">
+                                            {{ lesson.get_status_display }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted text-center">No recent lessons.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

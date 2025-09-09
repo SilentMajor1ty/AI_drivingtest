@@ -1,0 +1,145 @@
+{% extends 'base.html' %}
+
+{% block title %}Assignments - Driving School{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-journal-text"></i> Assignments</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        {% if not user.is_student %}
+        <div class="btn-group me-2">
+            <a href="{% url 'assignments:assignment_create' %}" class="btn btn-sm btn-primary">
+                <i class="bi bi-plus"></i> Create Assignment
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-list-task"></i> 
+                    {% if user.is_student %}Your Assignments{% elif user.is_teacher %}Student Assignments{% else %}All Assignments{% endif %}
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if assignments %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Assignment</th>
+                                    {% if user.is_teacher or user.is_methodist %}
+                                        <th>Student</th>
+                                    {% endif %}
+                                    <th>Subject</th>
+                                    <th>Due Date</th>
+                                    <th>Status</th>
+                                    <th>Grade</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for assignment in assignments %}
+                                <tr {% if assignment.is_overdue %}class="table-danger"{% elif assignment.days_until_due <= 2 and assignment.status != 'completed' %}class="table-warning"{% endif %}>
+                                    <td>
+                                        <strong>{{ assignment.title }}</strong>
+                                        {% if assignment.description %}
+                                            <br><small class="text-muted">{{ assignment.description|truncatewords:15 }}</small>
+                                        {% endif %}
+                                    </td>
+                                    {% if user.is_teacher or user.is_methodist %}
+                                        <td>{{ assignment.student.full_name }}</td>
+                                    {% endif %}
+                                    <td>{{ assignment.lesson.subject.name }}</td>
+                                    <td>
+                                        {{ assignment.due_date|date:"M d, Y" }}
+                                        <br><small class="text-muted">{{ assignment.due_date|time:"H:i" }}</small>
+                                        {% if assignment.is_overdue %}
+                                            <br><span class="badge bg-danger">OVERDUE</span>
+                                        {% elif assignment.days_until_due <= 2 and assignment.status != 'completed' %}
+                                            <br><span class="badge bg-warning">DUE SOON</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{% if assignment.status == 'completed' %}success{% elif assignment.status == 'submitted' %}info{% elif assignment.status == 'in_progress' %}warning{% else %}secondary{% endif %}">
+                                            {{ assignment.get_status_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if assignment.grade %}
+                                            <span class="badge bg-{% if assignment.grade >= 8 %}success{% elif assignment.grade >= 6 %}warning{% else %}danger{% endif %} fs-6">
+                                                {{ assignment.grade }}/10
+                                            </span>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{% url 'assignments:assignment_detail' assignment.pk %}" class="btn btn-outline-info btn-sm">
+                                                <i class="bi bi-eye"></i> View
+                                            </a>
+                                            {% if user.is_student and assignment.status != 'completed' %}
+                                                <a href="{% url 'assignments:submit_assignment' assignment.pk %}" class="btn btn-outline-success btn-sm">
+                                                    <i class="bi bi-upload"></i> Submit
+                                                </a>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    {% if is_paginated %}
+                        <nav aria-label="Page navigation">
+                            <ul class="pagination justify-content-center">
+                                {% if page_obj.has_previous %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page=1">First</a>
+                                    </li>
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+                                    </li>
+                                {% endif %}
+                                
+                                <li class="page-item active">
+                                    <span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+                                </li>
+                                
+                                {% if page_obj.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+                                    </li>
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Last</a>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    {% endif %}
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-journal-x fs-1 text-muted"></i>
+                        <h5 class="mt-3">No assignments found</h5>
+                        <p class="text-muted">
+                            {% if user.is_student %}
+                                Your assignments will appear here when they are assigned.
+                            {% elif user.is_methodist or user.is_teacher %}
+                                <a href="{% url 'assignments:assignment_create' %}" class="btn btn-primary">
+                                    <i class="bi bi-plus"></i> Create First Assignment
+                                </a>
+                            {% endif %}
+                        </p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

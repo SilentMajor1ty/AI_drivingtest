@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+
+{% block title %}Student Dashboard - Driving School{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-person-circle"></i> Student Dashboard</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <small class="text-muted">Welcome back, {{ user.full_name }}</small>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-calendar-event"></i> Upcoming Lessons
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if upcoming_lessons %}
+                    {% for lesson in upcoming_lessons %}
+                        <div class="lesson-card card mb-2">
+                            <div class="card-body py-2">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <h6 class="mb-1">{{ lesson.title }}</h6>
+                                        <small class="text-muted">
+                                            <i class="bi bi-person"></i> {{ lesson.teacher.full_name }} |
+                                            <i class="bi bi-book"></i> {{ lesson.subject.name }}
+                                        </small>
+                                    </div>
+                                    <div class="text-end">
+                                        <small class="fw-bold">
+                                            {{ lesson.start_time|date:"M d, Y" }}<br>
+                                            {{ lesson.start_time|time:"H:i" }}
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                    <a href="{% url 'scheduling:lesson_list' %}" class="btn btn-outline-success btn-sm">
+                        <i class="bi bi-eye"></i> View All Lessons
+                    </a>
+                {% else %}
+                    <p class="text-muted text-center">No upcoming lessons scheduled.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-journal-text"></i> Pending Assignments
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if pending_assignments %}
+                    {% for assignment in pending_assignments %}
+                        <div class="card mb-2 {% if assignment.is_overdue %}border-danger{% endif %}">
+                            <div class="card-body py-2">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <h6 class="mb-1">{{ assignment.title }}</h6>
+                                        <small class="text-muted">
+                                            <i class="bi bi-book"></i> {{ assignment.lesson.subject.name }}
+                                        </small>
+                                    </div>
+                                    <div class="text-end">
+                                        <small class="{% if assignment.is_overdue %}text-danger fw-bold{% elif assignment.days_until_due <= 2 %}text-warning fw-bold{% endif %}">
+                                            Due: {{ assignment.due_date|date:"M d, Y" }}
+                                            {% if assignment.is_overdue %}
+                                                <br><span class="badge bg-danger">OVERDUE</span>
+                                            {% elif assignment.days_until_due <= 2 %}
+                                                <br><span class="badge bg-warning">DUE SOON</span>
+                                            {% endif %}
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                    <a href="{% url 'assignments:assignment_list' %}" class="btn btn-outline-warning btn-sm">
+                        <i class="bi bi-eye"></i> View All Assignments
+                    </a>
+                {% else %}
+                    <p class="text-muted text-center">No pending assignments.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-info-circle"></i> Quick Actions
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <a href="{% url 'scheduling:calendar' %}" class="btn btn-outline-primary btn-lg w-100 mb-2">
+                            <i class="bi bi-calendar3"></i><br>
+                            View Calendar
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{% url 'assignments:assignment_list' %}" class="btn btn-outline-warning btn-lg w-100 mb-2">
+                            <i class="bi bi-journal-text"></i><br>
+                            My Assignments
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{% url 'accounts:profile' %}" class="btn btn-outline-info btn-lg w-100 mb-2">
+                            <i class="bi bi-person"></i><br>
+                            My Profile
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{% url 'assignments:notification_list' %}" class="btn btn-outline-secondary btn-lg w-100 mb-2">
+                            <i class="bi bi-bell"></i><br>
+                            Notifications
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

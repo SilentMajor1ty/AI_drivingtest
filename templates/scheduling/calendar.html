@@ -1,0 +1,145 @@
+{% extends 'base.html' %}
+
+{% block title %}Calendar - Driving School{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-calendar3"></i> Calendar</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        {% if user.is_methodist %}
+        <div class="btn-group me-2">
+            <a href="{% url 'scheduling:lesson_create' %}" class="btn btn-sm btn-primary">
+                <i class="bi bi-plus"></i> Schedule Lesson
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-clock"></i> 
+                    {% if user.is_student %}Your Lessons{% elif user.is_teacher %}Your Teaching Schedule{% else %}All Lessons{% endif %}
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if lessons %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Date & Time</th>
+                                    <th>Lesson</th>
+                                    {% if user.is_student %}
+                                        <th>Teacher</th>
+                                    {% elif user.is_teacher %}
+                                        <th>Student</th>
+                                    {% else %}
+                                        <th>Teacher</th>
+                                        <th>Student</th>
+                                    {% endif %}
+                                    <th>Subject</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for lesson in lessons %}
+                                <tr {% if lesson.start_time.date == today %}class="table-warning"{% endif %}>
+                                    <td>
+                                        <strong>{{ lesson.start_time|date:"M d, Y" }}</strong><br>
+                                        <small class="text-muted">{{ lesson.start_time|time:"H:i" }} - {{ lesson.end_time|time:"H:i" }}</small>
+                                    </td>
+                                    <td>
+                                        <strong>{{ lesson.title }}</strong>
+                                        {% if lesson.description %}
+                                            <br><small class="text-muted">{{ lesson.description|truncatewords:10 }}</small>
+                                        {% endif %}
+                                    </td>
+                                    {% if user.is_student %}
+                                        <td>{{ lesson.teacher.full_name }}</td>
+                                    {% elif user.is_teacher %}
+                                        <td>{{ lesson.student.full_name }}</td>
+                                    {% else %}
+                                        <td>{{ lesson.teacher.full_name }}</td>
+                                        <td>{{ lesson.student.full_name }}</td>
+                                    {% endif %}
+                                    <td>{{ lesson.subject.name }}</td>
+                                    <td>
+                                        <span class="badge bg-{% if lesson.status == 'completed' %}success{% elif lesson.status == 'scheduled' %}primary{% else %}secondary{% endif %}">
+                                            {{ lesson.get_status_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{% url 'scheduling:lesson_detail' lesson.pk %}" class="btn btn-outline-info btn-sm">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                            {% if lesson.zoom_link %}
+                                                <a href="{{ lesson.zoom_link }}" target="_blank" class="btn btn-outline-success btn-sm">
+                                                    <i class="bi bi-camera-video"></i>
+                                                </a>
+                                            {% endif %}
+                                            {% if user.is_methodist %}
+                                                <a href="{% url 'scheduling:lesson_edit' lesson.pk %}" class="btn btn-outline-warning btn-sm">
+                                                    <i class="bi bi-pencil"></i>
+                                                </a>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-calendar-x fs-1 text-muted"></i>
+                        <h5 class="mt-3">No lessons scheduled</h5>
+                        <p class="text-muted">
+                            {% if user.is_methodist %}
+                                <a href="{% url 'scheduling:lesson_create' %}" class="btn btn-primary">
+                                    <i class="bi bi-plus"></i> Schedule First Lesson
+                                </a>
+                            {% else %}
+                                Check back later for updates to your schedule.
+                            {% endif %}
+                        </p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-info-circle"></i> Legend
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <span class="badge bg-primary">Scheduled</span> - Upcoming lesson
+                    </div>
+                    <div class="col-md-3">
+                        <span class="badge bg-success">Completed</span> - Lesson finished
+                    </div>
+                    <div class="col-md-3">
+                        <span class="badge bg-secondary">Cancelled</span> - Lesson cancelled
+                    </div>
+                    <div class="col-md-3">
+                        <span class="bg-warning text-dark px-2 py-1 rounded">Highlighted</span> - Today's lessons
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

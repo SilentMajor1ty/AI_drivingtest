@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+
+{% block title %}Login - Driving School Management{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-4">
+        <div class="card mt-5">
+            <div class="card-header bg-primary text-white text-center">
+                <h3><i class="bi bi-mortarboard"></i> Driving School</h3>
+                <p class="mb-0">Sign in to your account</p>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    {% if form.errors %}
+                        <div class="alert alert-danger">
+                            {{ form.errors }}
+                        </div>
+                    {% endif %}
+                    
+                    <div class="mb-3">
+                        <label for="{{ form.username.id_for_label }}" class="form-label">
+                            <i class="bi bi-person"></i> Username
+                        </label>
+                        {{ form.username }}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="{{ form.password.id_for_label }}" class="form-label">
+                            <i class="bi bi-lock"></i> Password
+                        </label>
+                        {{ form.password }}
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-box-arrow-in-right"></i> Sign In
+                        </button>
+                    </div>
+                </form>
+                
+                <div class="mt-4 text-center">
+                    <small class="text-muted">
+                        Demo Accounts:<br>
+                        Methodist: methodist / methodist123<br>
+                        Teacher: teacher1 / teacher123<br>
+                        Student: student1 / student123
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
