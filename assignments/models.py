@@ -27,7 +27,10 @@ class Assignment(models.Model):
     lesson = models.ForeignKey(
         'scheduling.Lesson',
         on_delete=models.CASCADE,
-        related_name='assignments'
+        related_name='assignments',
+        null=True,
+        blank=True,
+        help_text="Связанное занятие (необязательно)"
     )
     student = models.ForeignKey(
         User,

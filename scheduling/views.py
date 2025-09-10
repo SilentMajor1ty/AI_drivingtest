@@ -9,6 +9,7 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 import json
+from datetime import datetime, timedelta
 
 from .models import Lesson, Subject, Schedule, ProblemReport
 from .forms import LessonForm
@@ -17,40 +18,58 @@ from assignments.models import Notification
 
 @login_required
 def calendar_view(request):
-    """Calendar view showing lessons based on user role"""
+    """Calendar view showing lessons for a specific week with navigation"""
     user = request.user
     
-    if user.is_student():
-        lessons = Lesson.objects.filter(student=user).select_related('teacher', 'subject')
-    elif user.is_teacher():
-        lessons = Lesson.objects.filter(teacher=user).select_related('student', 'subject')
-    else:  # Methodist
-        lessons = Lesson.objects.all().select_related('teacher', 'student', 'subject')
+    # Get week offset from request (default to current week)
+    week_offset = int(request.GET.get('week', 0))
     
-    # Convert lessons to JSON for JavaScript
-    lessons_json = []
-    for lesson in lessons:
-        lessons_json.append({
-            'id': lesson.id,
-            'title': lesson.title,
-            'subject': lesson.subject.name,
-            'start_time': lesson.start_time.isoformat(),
-            'end_time': lesson.end_time.isoformat(),
-            'status': lesson.status,
-            'status_display': lesson.get_status_display(),
-            'teacher': lesson.teacher.full_name,
-            'student': lesson.student.full_name,
-            'description': lesson.description,
-            'zoom_link': lesson.zoom_link,
-        })
+    # Calculate the week start (Monday)
+    today = timezone.now().date()
+    current_monday = today - timedelta(days=today.weekday())
+    week_start = current_monday + timedelta(weeks=week_offset)
+    week_end = week_start + timedelta(days=6)
+    
+    # Filter lessons for the current week
+    if user.is_student():
+        lessons = Lesson.objects.filter(
+            student=user,
+            start_time__date__range=[week_start, week_end]
+        ).select_related('teacher', 'subject').order_by('start_time')
+    elif user.is_teacher():
+        lessons = Lesson.objects.filter(
+            teacher=user,
+            start_time__date__range=[week_start, week_end]
+        ).select_related('student', 'subject').order_by('start_time')
+    else:  # Methodist
+        lessons = Lesson.objects.filter(
+            start_time__date__range=[week_start, week_end]
+        ).select_related('teacher', 'student', 'subject').order_by('start_time')
+    
+    # Group lessons by day
+    lessons_by_day = {}
+    for i in range(7):  # Monday to Sunday
+        day_date = week_start + timedelta(days=i)
+        day_lessons = lessons.filter(start_time__date=day_date)
+        lessons_by_day[day_date] = day_lessons
+    
+    # Calculate week navigation
+    prev_week = week_offset - 1
+    next_week = week_offset + 1
     
     context = {
-        'lessons': lessons,
-        'lessons_json': json.dumps(lessons_json),
+        'lessons_by_day': lessons_by_day,
+        'week_start': week_start,
+        'week_end': week_end,
+        'week_offset': week_offset,
+        'prev_week': prev_week,
+        'next_week': next_week,
         'user': user,
+        'is_current_week': week_offset == 0,
+        'today': today,
     }
     
-    return render(request, 'scheduling/calendar_new.html', context)
+    return render(request, 'scheduling/calendar.html', context)
 
 
 @login_required

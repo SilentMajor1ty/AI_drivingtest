@@ -8,6 +8,7 @@ from django.http import JsonResponse
 from django.utils import timezone
 
 from .models import Assignment, AssignmentSubmission, Notification
+from .forms import AssignmentForm, AssignmentSubmissionForm
 
 
 class AssignmentListView(LoginRequiredMixin, ListView):
@@ -53,8 +54,8 @@ class AssignmentDetailView(LoginRequiredMixin, DetailView):
 class AssignmentCreateView(LoginRequiredMixin, CreateView):
     """Create new assignment - Methodist and Teachers"""
     model = Assignment
+    form_class = AssignmentForm
     template_name = 'assignments/assignment_form.html'
-    fields = ['title', 'description', 'lesson', 'student', 'due_date', 'assignment_file']
     success_url = reverse_lazy('assignments:assignment_list')
     
     def dispatch(self, request, *args, **kwargs):
@@ -79,19 +80,6 @@ class AssignmentCreateView(LoginRequiredMixin, CreateView):
         
         messages.success(self.request, f"Assignment '{assignment.title}' created successfully!")
         return response
-    
-    def get_form(self, form_class=None):
-        form = super().get_form(form_class)
-        
-        user = self.request.user
-        if user.is_teacher():
-            # Teachers can only assign to their students
-            form.fields['lesson'].queryset = form.fields['lesson'].queryset.filter(teacher=user)
-            form.fields['student'].queryset = form.fields['student'].queryset.filter(
-                student_lessons__teacher=user
-            ).distinct()
-        
-        return form
 
 
 @login_required

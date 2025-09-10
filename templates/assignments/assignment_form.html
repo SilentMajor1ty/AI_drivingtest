@@ -68,18 +68,7 @@
                     </div>
                     
                     <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="{{ form.lesson.id_for_label }}" class="form-label">
-                                    <i class="bi bi-calendar-event"></i> {% trans "Занятие" %} *
-                                </label>
-                                {{ form.lesson }}
-                                {% if form.lesson.help_text %}
-                                <div class="form-text">{{ form.lesson.help_text }}</div>
-                                {% endif %}
-                            </div>
-                        </div>
-                        <div class="col-md-6">
+                        <div class="col-md-12">
                             <div class="mb-3">
                                 <label for="{{ form.student.id_for_label }}" class="form-label">
                                     <i class="bi bi-person"></i> {% trans "Ученик" %} *
@@ -105,12 +94,12 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="{{ form.due_date.id_for_label }}" class="form-label">
-                                    <i class="bi bi-calendar-x"></i> {% trans "Срок сдачи" %} *
+                                <label for="{{ form.due_date_days.id_for_label }}" class="form-label">
+                                    <i class="bi bi-calendar-x"></i> {% trans "Срок выполнения" %} *
                                 </label>
-                                {{ form.due_date }}
-                                {% if form.due_date.help_text %}
-                                <div class="form-text">{{ form.due_date.help_text }}</div>
+                                {{ form.due_date_days }}
+                                {% if form.due_date_days.help_text %}
+                                <div class="form-text">{{ form.due_date_days.help_text }}</div>
                                 {% endif %}
                             </div>
                         </div>
@@ -169,7 +158,11 @@
                     </li>
                     <li class="mb-2">
                         <i class="bi bi-check-circle text-success"></i>
-                        <small>{% trans "Установите реалистичный срок для выполнения задания" %}</small>
+                        <small>{% trans "Выберите подходящий срок для выполнения задания" %}</small>
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-check-circle text-success"></i>
+                        <small>{% trans "Задания больше не привязываются к конкретным занятиям" %}</small>
                     </li>
                     <li class="mb-2">
                         <i class="bi bi-check-circle text-success"></i>
@@ -203,27 +196,10 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Set minimum date for due_date to today
-    const dueDateInput = document.getElementById('{{ form.due_date.id_for_label }}');
-    if (dueDateInput) {
-        const today = new Date().toISOString().split('T')[0];
-        dueDateInput.setAttribute('min', today);
-    }
-    
-    // Auto-populate student based on lesson selection
-    const lessonSelect = document.getElementById('{{ form.lesson.id_for_label }}');
-    const studentSelect = document.getElementById('{{ form.student.id_for_label }}');
-    
-    if (lessonSelect && studentSelect) {
-        lessonSelect.addEventListener('change', function() {
-            const selectedOption = this.options[this.selectedIndex];
-            if (selectedOption && selectedOption.text.includes(' - ')) {
-                // Extract student name from lesson text (assuming format: "Lesson Title - Student Name")
-                const lessonText = selectedOption.text;
-                // This would need actual lesson data to work properly
-                // For now, we'll just show the relationship exists
-            }
-        });
+    // Focus on title field when page loads
+    const titleInput = document.getElementById('{{ form.title.id_for_label }}');
+    if (titleInput) {
+        titleInput.focus();
     }
 });
 </script>
