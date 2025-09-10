@@ -382,6 +382,10 @@ def lesson_details_ajax(request, lesson_id):
         'status': lesson.get_status_display(),
         'description': lesson.description,
         'zoom_link': lesson.zoom_link,
+        'can_be_confirmed': lesson.can_be_confirmed,
+        'teacher_confirmed': lesson.teacher_confirmed_completion,
+        'student_confirmed': lesson.student_confirmed_completion,
+        'is_completed': lesson.status == lesson.LessonStatus.COMPLETED,
     }
     
     # Role-based participant display
@@ -564,6 +568,49 @@ def cancel_lesson(request, lesson_id):
             
             return JsonResponse({'success': True})
             
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+
+@login_required
+def confirm_lesson_completion(request, lesson_id):
+    """Confirm lesson completion by teacher or student"""
+    lesson = get_object_or_404(Lesson, pk=lesson_id)
+    
+    # Check permissions
+    if not (request.user == lesson.teacher or request.user == lesson.student):
+        return JsonResponse({'success': False, 'error': 'Permission denied'})
+    
+    # Check if lesson can be confirmed
+    if not lesson.can_be_confirmed:
+        return JsonResponse({'success': False, 'error': 'Lesson cannot be confirmed yet'})
+    
+    if request.method == 'POST':
+        try:
+            rating = request.POST.get('rating')
+            comments = request.POST.get('comments', '')
+            
+            # Validate rating if provided
+            if rating:
+                rating = int(rating)
+                if rating < 1 or rating > 10:
+                    raise ValueError("Rating must be between 1 and 10")
+            
+            # Confirm completion based on user role
+            if request.user == lesson.teacher:
+                lesson.confirm_completion_by_teacher(rating, comments)
+            else:  # student
+                lesson.confirm_completion_by_student(rating, comments)
+            
+            return JsonResponse({
+                'success': True,
+                'is_completed': lesson.status == lesson.LessonStatus.COMPLETED
+            })
+            
+        except ValueError as e:
+            return JsonResponse({'success': False, 'error': str(e)})
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)})
     

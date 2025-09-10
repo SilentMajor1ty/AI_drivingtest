@@ -20,6 +20,7 @@ urlpatterns = [
     # Lesson management
     path('lessons/<int:lesson_id>/reschedule/', views.reschedule_lesson, name='reschedule_lesson'),
     path('lessons/<int:lesson_id>/cancel/', views.cancel_lesson, name='cancel_lesson'),
+    path('lessons/<int:lesson_id>/confirm-completion/', views.confirm_lesson_completion, name='confirm_lesson_completion'),
     
     # Schedule management
     path('schedule/', views.ScheduleView.as_view(), name='schedule'),

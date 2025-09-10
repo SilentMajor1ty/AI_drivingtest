@@ -86,6 +86,11 @@ class Lesson(models.Model):
     teacher_comments = models.TextField(blank=True)
     student_comments = models.TextField(blank=True)
     
+    # Lesson completion tracking
+    teacher_confirmed_completion = models.BooleanField(default=False, help_text="Преподаватель подтвердил проведение урока")
+    student_confirmed_completion = models.BooleanField(default=False, help_text="Ученик подтвердил посещение урока")
+    completion_confirmed_at = models.DateTimeField(null=True, blank=True, help_text="Когда урок был подтвержден обеими сторонами")
+    
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -139,6 +144,47 @@ class Lesson(models.Model):
         if self.start_time and self.end_time:
             return int((self.end_time - self.start_time).total_seconds() / 60)
         return 0
+    
+    @property
+    def can_be_confirmed(self):
+        """Check if lesson can be confirmed (lesson time has passed)"""
+        return (
+            self.status == self.LessonStatus.SCHEDULED and 
+            timezone.now() > self.end_time
+        )
+    
+    @property
+    def is_confirmed_by_both(self):
+        """Check if lesson is confirmed by both teacher and student"""
+        return self.teacher_confirmed_completion and self.student_confirmed_completion
+    
+    def confirm_completion_by_teacher(self, rating=None, comments=""):
+        """Confirm lesson completion by teacher"""
+        self.teacher_confirmed_completion = True
+        if rating:
+            self.teacher_rating = rating
+        if comments:
+            self.teacher_comments = comments
+        
+        if self.is_confirmed_by_both:
+            self.status = self.LessonStatus.COMPLETED
+            self.completion_confirmed_at = timezone.now()
+        
+        self.save()
+    
+    def confirm_completion_by_student(self, rating=None, comments=""):
+        """Confirm lesson completion by student"""
+        self.student_confirmed_completion = True
+        if rating:
+            self.student_rating = rating
+        if comments:
+            self.student_comments = comments
+        
+        if self.is_confirmed_by_both:
+            self.status = self.LessonStatus.COMPLETED
+            self.completion_confirmed_at = timezone.now()
+        
+        self.save()
     
     @property
     def can_be_rated(self):

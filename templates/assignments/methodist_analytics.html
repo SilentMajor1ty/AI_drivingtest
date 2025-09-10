@@ -1,0 +1,188 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Аналитика" %} - {% trans "Автошкола" %}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-graph-up"></i> {% trans "Аналитика и статистика" %}</h1>
+</div>
+
+<div class="row">
+    <!-- Assignment Statistics -->
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-journal-text"></i> {% trans "Статистика заданий" %}
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-6">
+                        <div class="text-center">
+                            <h3 class="text-primary">{{ total_assignments }}</h3>
+                            <p class="text-muted mb-0">{% trans "Всего заданий" %}</p>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-center">
+                            <h3 class="text-success">{{ completed_assignments }}</h3>
+                            <p class="text-muted mb-0">{% trans "Проверено" %}</p>
+                        </div>
+                    </div>
+                </div>
+                {% if avg_grade %}
+                <hr>
+                <div class="text-center">
+                    <h4 class="text-info">{{ avg_grade|floatformat:1 }}/10</h4>
+                    <p class="text-muted mb-0">{% trans "Средняя оценка" %}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Lesson Statistics -->
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-calendar-check"></i> {% trans "Статистика занятий" %}
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-4">
+                        <div class="text-center">
+                            <h4 class="text-primary">{{ total_lessons }}</h4>
+                            <small class="text-muted">{% trans "Всего" %}</small>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="text-center">
+                            <h4 class="text-success">{{ completed_lessons }}</h4>
+                            <small class="text-muted">{% trans "Проведено" %}</small>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="text-center">
+                            <h4 class="text-danger">{{ cancelled_lessons }}</h4>
+                            <small class="text-muted">{% trans "Отменено" %}</small>
+                        </div>
+                    </div>
+                </div>
+                <hr>
+                <div class="text-center">
+                    <h4 class="text-info">{{ attendance_rate|floatformat:1 }}%</h4>
+                    <p class="text-muted mb-0">{% trans "Посещаемость" %}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Lesson Ratings -->
+    {% if avg_teacher_rating or avg_student_rating %}
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-star-fill"></i> {% trans "Рейтинги занятий" %}
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if avg_teacher_rating %}
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between">
+                        <span>{% trans "Оценка преподавателей" %}</span>
+                        <strong>{{ avg_teacher_rating|floatformat:1 }}/10</strong>
+                    </div>
+                    <div class="progress">
+                        <div class="progress-bar bg-success" style="width: {{ avg_teacher_rating|mul:10 }}%"></div>
+                    </div>
+                </div>
+                {% endif %}
+                {% if avg_student_rating %}
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between">
+                        <span>{% trans "Оценка учеников" %}</span>
+                        <strong>{{ avg_student_rating|floatformat:1 }}/10</strong>
+                    </div>
+                    <div class="progress">
+                        <div class="progress-bar bg-info" style="width: {{ avg_student_rating|mul:10 }}%"></div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Top Students -->
+    {% if student_grades %}
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-trophy"></i> {% trans "Топ студентов по оценкам" %}
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>{% trans "Ученик" %}</th>
+                                <th class="text-center">{% trans "Заданий" %}</th>
+                                <th class="text-center">{% trans "Средняя оценка" %}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for student in student_grades %}
+                            <tr>
+                                <td>{{ student.student__first_name }} {{ student.student__last_name }}</td>
+                                <td class="text-center">{{ student.assignment_count }}</td>
+                                <td class="text-center">
+                                    <span class="badge bg-{% if student.avg_grade >= 8 %}success{% elif student.avg_grade >= 6 %}warning{% else %}danger{% endif %}">
+                                        {{ student.avg_grade|floatformat:1 }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Action Buttons -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-tools"></i> {% trans "Действия" %}
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex gap-2">
+                    <a href="{% url 'assignments:assignment_list' %}" class="btn btn-outline-primary">
+                        <i class="bi bi-journal-text"></i> {% trans "Все задания" %}
+                    </a>
+                    <a href="{% url 'scheduling:calendar' %}" class="btn btn-outline-success">
+                        <i class="bi bi-calendar3"></i> {% trans "Календарь" %}
+                    </a>
+                    <a href="{% url 'assignments:assignment_create' %}" class="btn btn-primary">
+                        <i class="bi bi-plus"></i> {% trans "Создать задание" %}
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

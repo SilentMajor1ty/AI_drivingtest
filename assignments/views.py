@@ -317,3 +317,67 @@ def delete_assignment_file(request, file_id):
         return JsonResponse({'success': True})
     
     return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+
+@login_required
+def methodist_analytics(request):
+    """Analytics dashboard for methodist"""
+    if not request.user.is_methodist():
+        messages.error(request, "Access denied. Only methodists can view analytics.")
+        return redirect('accounts:dashboard')
+    
+    from django.db.models import Avg, Count
+    from scheduling.models import Lesson
+    from accounts.models import User
+    
+    # Grade statistics
+    graded_assignments = Assignment.objects.filter(grade__isnull=False)
+    
+    # Average grade by student
+    student_grades = graded_assignments.values(
+        'student__id', 'student__first_name', 'student__last_name'
+    ).annotate(
+        avg_grade=Avg('grade'),
+        assignment_count=Count('id')
+    ).order_by('-avg_grade')
+    
+    # Overall statistics
+    total_assignments = Assignment.objects.count()
+    completed_assignments = graded_assignments.count()
+    avg_grade = graded_assignments.aggregate(avg=Avg('grade'))['avg']
+    
+    # Lesson statistics
+    total_lessons = Lesson.objects.count()
+    completed_lessons = Lesson.objects.filter(status=Lesson.LessonStatus.COMPLETED).count()
+    cancelled_lessons = Lesson.objects.filter(status=Lesson.LessonStatus.CANCELLED).count()
+    
+    # Average lesson ratings
+    lesson_ratings = Lesson.objects.filter(
+        status=Lesson.LessonStatus.COMPLETED,
+        teacher_rating__isnull=False,
+        student_rating__isnull=False
+    ).aggregate(
+        avg_teacher_rating=Avg('teacher_rating'),
+        avg_student_rating=Avg('student_rating')
+    )
+    
+    # Attendance rate (lessons that were confirmed vs scheduled)
+    scheduled_lessons = Lesson.objects.filter(
+        status__in=[Lesson.LessonStatus.SCHEDULED, Lesson.LessonStatus.COMPLETED]
+    ).count()
+    attendance_rate = (completed_lessons / scheduled_lessons * 100) if scheduled_lessons > 0 else 0
+    
+    context = {
+        'student_grades': student_grades[:10],  # Top 10 students
+        'total_assignments': total_assignments,
+        'completed_assignments': completed_assignments,
+        'avg_grade': avg_grade,
+        'total_lessons': total_lessons,
+        'completed_lessons': completed_lessons,
+        'cancelled_lessons': cancelled_lessons,
+        'attendance_rate': attendance_rate,
+        'avg_teacher_rating': lesson_ratings['avg_teacher_rating'],
+        'avg_student_rating': lesson_ratings['avg_student_rating'],
+    }
+    
+    return render(request, 'assignments/methodist_analytics.html', context)

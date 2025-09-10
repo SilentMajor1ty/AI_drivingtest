@@ -103,6 +103,48 @@
     </div>
 </div>
 
+<!-- Lesson Completion Modal -->
+<div class="modal fade" id="lessonCompletionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Оценить урок</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="completion-lesson-id">
+                <div class="mb-3">
+                    <label for="lesson-rating" class="form-label">Оценка урока (1-10)</label>
+                    <select class="form-select" id="lesson-rating" required>
+                        <option value="">Выберите оценку</option>
+                        <option value="10">10 - Отлично</option>
+                        <option value="9">9 - Очень хорошо</option>
+                        <option value="8">8 - Хорошо</option>
+                        <option value="7">7 - Неплохо</option>
+                        <option value="6">6 - Удовлетворительно</option>
+                        <option value="5">5 - Слабо</option>
+                        <option value="4">4 - Плохо</option>
+                        <option value="3">3 - Очень плохо</option>
+                        <option value="2">2 - Ужасно</option>
+                        <option value="1">1 - Кошмар</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="lesson-comments" class="form-label">Комментарий (необязательно)</label>
+                    <textarea class="form-control" id="lesson-comments" rows="3" 
+                              placeholder="Ваши впечатления о уроке..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-success" onclick="submitLessonCompletionWithRating()">
+                    <i class="bi bi-check-circle"></i> Подтвердить и оценить
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <style>
 .calendar-grid {
     border: 1px solid #dee2e6;
@@ -438,6 +480,30 @@ function showLessonDetails(lessonId) {
                     </div>
                 </div>
                 ${data.description ? `<div class="mt-3"><h6>Описание</h6><p>${data.description}</p></div>` : ''}
+                
+                <!-- Lesson completion buttons -->
+                ${data.can_be_confirmed && !data.is_completed ? `
+                    <div class="mt-3">
+                        <h6>Подтверждение проведения урока</h6>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-success btn-sm" onclick="confirmLessonCompletion(${lessonId}, true)">
+                                <i class="bi bi-check-circle"></i> Урок состоялся
+                            </button>
+                            <button class="btn btn-outline-warning btn-sm" onclick="showProblemReport(${lessonId})">
+                                <i class="bi bi-exclamation-triangle"></i> Сообщить о проблеме
+                            </button>
+                        </div>
+                    </div>
+                ` : ''}
+                
+                ${data.is_completed ? `
+                    <div class="mt-3">
+                        <div class="alert alert-success">
+                            <i class="bi bi-check-circle-fill me-2"></i>
+                            Урок завершен и подтвержден
+                        </div>
+                    </div>
+                ` : ''}
             `;
             
             document.getElementById('lessonDetailsContent').innerHTML = content;
@@ -492,6 +558,52 @@ function submitProblemReport() {
         console.error('Error:', error);
         alert('Ошибка при отправке отчета');
     });
+}
+
+function confirmLessonCompletion(lessonId, showRating = false) {
+    if (showRating) {
+        // Show rating modal
+        document.getElementById('completion-lesson-id').value = lessonId;
+        new bootstrap.Modal(document.getElementById('lessonCompletionModal')).show();
+    } else {
+        // Just confirm without rating
+        submitLessonCompletion(lessonId);
+    }
+}
+
+function submitLessonCompletion(lessonId, rating = null, comments = '') {
+    const formData = new FormData();
+    if (rating) formData.append('rating', rating);
+    if (comments) formData.append('comments', comments);
+    
+    fetch(`/scheduling/lessons/${lessonId}/confirm-completion/`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            if (data.is_completed) {
+                alert('Урок успешно завершен и подтвержден!');
+            } else {
+                alert('Ваше подтверждение записано. Ожидается подтверждение от другой стороны.');
+            }
+            location.reload();
+        } else {
+            alert('Ошибка: ' + data.error);
+        }
+    });
+}
+
+function submitLessonCompletionWithRating() {
+    const lessonId = document.getElementById('completion-lesson-id').value;
+    const rating = document.getElementById('lesson-rating').value;
+    const comments = document.getElementById('lesson-comments').value;
+    
+    submitLessonCompletion(lessonId, rating, comments);
 }
 
 // Initialize calendar on page load
