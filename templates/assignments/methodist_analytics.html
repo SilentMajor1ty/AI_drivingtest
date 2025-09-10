@@ -100,7 +100,7 @@
                         <strong>{{ avg_teacher_rating|floatformat:1 }}/10</strong>
                     </div>
                     <div class="progress">
-                        <div class="progress-bar bg-success" style="width: {{ avg_teacher_rating|mul:10 }}%"></div>
+                        <div class="progress-bar bg-success" style="width: {% widthratio avg_teacher_rating 10 100 %}%"></div>
                     </div>
                 </div>
                 {% endif %}
@@ -111,7 +111,7 @@
                         <strong>{{ avg_student_rating|floatformat:1 }}/10</strong>
                     </div>
                     <div class="progress">
-                        <div class="progress-bar bg-info" style="width: {{ avg_student_rating|mul:10 }}%"></div>
+                        <div class="progress-bar bg-info" style="width: {% widthratio avg_student_rating 10 100 %}%"></div>
                     </div>
                 </div>
                 {% endif %}
