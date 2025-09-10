@@ -21,7 +21,7 @@ class Assignment(models.Model):
     
     # Basic assignment information
     title = models.CharField(max_length=200)
-    description = models.TextField()
+    description = models.TextField(blank=True)
     
     # Relationships
     lesson = models.ForeignKey(

@@ -38,7 +38,7 @@ class AssignmentForm(forms.ModelForm):
             'description': forms.Textarea(attrs={
                 'class': 'form-control',
                 'rows': 4,
-                'placeholder': 'Подробное описание задания'
+                'placeholder': 'Подробное описание задания (необязательно)'
             }),
             'student': forms.Select(attrs={'class': 'form-select'}),
             'assignment_file': forms.FileInput(attrs={'class': 'form-control'})

@@ -21,17 +21,56 @@ class AssignmentListView(LoginRequiredMixin, ListView):
     
     def get_queryset(self):
         user = self.request.user
+        status_filter = self.request.GET.get('status', 'all')
         
+        # Base queryset based on user role
         if user.is_student():
-            return Assignment.objects.filter(student=user).select_related('lesson', 'lesson__subject', 'created_by')
+            queryset = Assignment.objects.filter(student=user).select_related('lesson', 'lesson__subject', 'created_by')
         elif user.is_teacher():
             # Teachers see assignments for their lessons OR assignments they created
-            teacher_assignments = Assignment.objects.filter(
+            queryset = Assignment.objects.filter(
                 models.Q(lesson__teacher=user) | models.Q(created_by=user)
             ).select_related('student', 'lesson', 'lesson__subject', 'created_by')
-            return teacher_assignments
         else:  # Methodist
-            return Assignment.objects.all().select_related('student', 'lesson', 'lesson__subject', 'created_by')
+            queryset = Assignment.objects.all().select_related('student', 'lesson', 'lesson__subject', 'created_by')
+        
+        # Apply status filtering
+        if status_filter == 'overdue':
+            queryset = queryset.filter(
+                due_date__lt=timezone.now(),
+                status__in=[Assignment.AssignmentStatus.ASSIGNED, Assignment.AssignmentStatus.IN_PROGRESS, Assignment.AssignmentStatus.NEEDS_REVISION]
+            )
+        elif status_filter == 'graded':
+            queryset = queryset.filter(status=Assignment.AssignmentStatus.REVIEWED)
+        # 'all' shows everything (no additional filtering)
+        
+        return queryset
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['current_filter'] = self.request.GET.get('status', 'all')
+        
+        # Add filter counts for the template
+        user = self.request.user
+        if user.is_student():
+            base_queryset = Assignment.objects.filter(student=user)
+        elif user.is_teacher():
+            base_queryset = Assignment.objects.filter(
+                models.Q(lesson__teacher=user) | models.Q(created_by=user)
+            )
+        else:  # Methodist
+            base_queryset = Assignment.objects.all()
+        
+        context['filter_counts'] = {
+            'all': base_queryset.count(),
+            'overdue': base_queryset.filter(
+                due_date__lt=timezone.now(),
+                status__in=[Assignment.AssignmentStatus.ASSIGNED, Assignment.AssignmentStatus.IN_PROGRESS, Assignment.AssignmentStatus.NEEDS_REVISION]
+            ).count(),
+            'graded': base_queryset.filter(status=Assignment.AssignmentStatus.REVIEWED).count(),
+        }
+        
+        return context
 
 
 class AssignmentDetailView(LoginRequiredMixin, DetailView):
@@ -287,12 +326,24 @@ def upload_assignment_files(request, submission_id):
     if request.method == 'POST':
         uploaded_files = request.FILES.getlist('files')
         
+        # Validate file sizes (200MB limit per file)
+        max_size = 200 * 1024 * 1024  # 200MB in bytes
         for file in uploaded_files:
-            AssignmentFile.objects.create(
+            if file.size > max_size:
+                return JsonResponse({
+                    'success': False, 
+                    'error': f'File "{file.name}" is too large. Maximum size is 200MB.'
+                })
+        
+        # Create file records
+        created_files = []
+        for file in uploaded_files:
+            assignment_file = AssignmentFile.objects.create(
                 submission=submission,
                 file=file,
                 original_name=file.name
             )
+            created_files.append(assignment_file)
         
         return JsonResponse({
             'success': True, 

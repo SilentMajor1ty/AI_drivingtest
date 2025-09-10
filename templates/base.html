@@ -213,11 +213,19 @@
                             </a>
                         </li>
                         
+                        {% if user.is_teacher %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'scheduling:teacher_lesson_management' %}">
+                                <i class="bi bi-book"></i> {% trans "Занятия" %}
+                            </a>
+                        </li>
+                        {% else %}
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'scheduling:lesson_list' %}">
                                 <i class="bi bi-book"></i> {% trans "Занятия" %}
                             </a>
                         </li>
+                        {% endif %}
                         
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'assignments:assignment_list' %}">
@@ -233,6 +241,16 @@
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'accounts:user_list' %}">
                                 <i class="bi bi-people"></i> {% trans "Управление пользователями" %}
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'scheduling:lesson_list' %}">
+                                <i class="bi bi-calendar-check"></i> {% trans "Управление занятиями" %}
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'assignments:methodist_analytics' %}">
+                                <i class="bi bi-bar-chart"></i> {% trans "Аналитика" %}
                             </a>
                         </li>
                         <li class="nav-item">
