@@ -155,7 +155,13 @@ def mark_notification_read(request, pk):
 @login_required
 def get_notifications_api(request):
     """API endpoint to get user notifications"""
-    notifications = Notification.objects.filter(user=request.user).order_by('-sent_at')[:10]
+    notifications = Notification.objects.filter(user=request.user).order_by('-sent_at')
+    
+    # Get unread count first, before slicing
+    unread_count = notifications.filter(is_read=False).count()
+    
+    # Then slice for display
+    notifications_limited = notifications[:10]
     
     data = {
         'notifications': [
@@ -167,9 +173,9 @@ def get_notifications_api(request):
                 'sent_at': n.sent_at.strftime('%d.%m.%Y %H:%M'),
                 'notification_type': n.notification_type,
             }
-            for n in notifications
+            for n in notifications_limited
         ],
-        'unread_count': notifications.filter(is_read=False).count()
+        'unread_count': unread_count
     }
     
     return JsonResponse(data)

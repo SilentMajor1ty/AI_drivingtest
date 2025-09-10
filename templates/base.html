@@ -111,10 +111,15 @@
                                 <i class="bi bi-person"></i> {% trans "Профиль" %}
                             </a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="{% url 'accounts:logout' %}">
+                            <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
                                 <i class="bi bi-box-arrow-right"></i> {% trans "Выход" %}
                             </a></li>
                         </ul>
+                        
+                        <!-- Hidden logout form -->
+                        <form id="logout-form" action="{% url 'accounts:logout' %}" method="post" style="display: none;">
+                            {% csrf_token %}
+                        </form>
                     </li>
                 </ul>
             </div>
@@ -199,6 +204,12 @@
     
     {% if user.is_authenticated %}
     <script>
+        // Add CSRF token to all AJAX requests
+        function getCSRFToken() {
+            const token = document.querySelector('[name=csrfmiddlewaretoken]');
+            return token ? token.value : '';
+        }
+        
         // Notification functionality
         let notificationUpdateInterval;
         
@@ -236,14 +247,25 @@
                 })
                 .catch(error => {
                     console.error('Error loading notifications:', error);
+                    // Set fallback empty state
+                    const notificationList = document.getElementById('notificationList');
+                    if (notificationList) {
+                        notificationList.innerHTML = '<div class="dropdown-item-text text-muted">Нет уведомлений</div>';
+                    }
                 });
         }
         
         function markAsRead(notificationId) {
+            const csrfToken = getCSRFToken();
+            if (!csrfToken) {
+                console.warn('CSRF token not found');
+                return;
+            }
+            
             fetch(`/assignments/notifications/${notificationId}/read/`, {
                 method: 'POST',
                 headers: {
-                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                    'X-CSRFToken': csrfToken,
                 }
             })
             .then(() => {
@@ -257,16 +279,21 @@
         
         // Load notifications on page load
         document.addEventListener('DOMContentLoaded', function() {
-            loadNotifications();
-            
-            // Update notifications every 30 seconds
-            notificationUpdateInterval = setInterval(loadNotifications, 30000);
+            // Delay initial load to ensure DOM is ready
+            setTimeout(() => {
+                loadNotifications();
+                // Update notifications every 30 seconds
+                notificationUpdateInterval = setInterval(loadNotifications, 30000);
+            }, 1000);
         });
         
         // Show/hide notifications dropdown
-        document.getElementById('notificationsDropdown').addEventListener('click', function() {
-            loadNotifications(); // Refresh when opening dropdown
-        });
+        const notificationsDropdown = document.getElementById('notificationsDropdown');
+        if (notificationsDropdown) {
+            notificationsDropdown.addEventListener('click', function() {
+                loadNotifications(); // Refresh when opening dropdown
+            });
+        }
         
         // Clear interval when page unloads
         window.addEventListener('beforeunload', function() {

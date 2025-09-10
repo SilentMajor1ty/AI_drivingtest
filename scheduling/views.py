@@ -60,12 +60,12 @@ def calendar_lessons_api(request):
     year = int(request.GET.get('year', timezone.now().year))
     month = int(request.GET.get('month', timezone.now().month))
     
-    # Filter lessons for the requested month
-    start_date = timezone.datetime(year, month, 1)
+    # Filter lessons for the requested month using timezone-aware dates
+    start_date = timezone.make_aware(timezone.datetime(year, month, 1))
     if month == 12:
-        end_date = timezone.datetime(year + 1, 1, 1)
+        end_date = timezone.make_aware(timezone.datetime(year + 1, 1, 1))
     else:
-        end_date = timezone.datetime(year, month + 1, 1)
+        end_date = timezone.make_aware(timezone.datetime(year, month + 1, 1))
     
     if user.is_student():
         lessons = Lesson.objects.filter(
