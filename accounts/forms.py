@@ -10,7 +10,7 @@ class UserCreateForm(UserCreationForm):
         model = User
         fields = (
             'username', 'email', 'first_name', 'last_name', 'middle_name',
-            'role', 'phone', 'timezone'
+            'role', 'phone'
         )
         widgets = {
             'username': forms.TextInput(attrs={'class': 'form-control'}),
@@ -20,13 +20,20 @@ class UserCreateForm(UserCreationForm):
             'middle_name': forms.TextInput(attrs={'class': 'form-control'}),
             'role': forms.Select(attrs={'class': 'form-select'}),
             'phone': forms.TextInput(attrs={'class': 'form-control'}),
-            'timezone': forms.Select(attrs={'class': 'form-select'}),
         }
     
     def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         self.fields['password1'].widget.attrs.update({'class': 'form-control'})
         self.fields['password2'].widget.attrs.update({'class': 'form-control'})
+        
+        # Restrict role choices for Methodist users - they cannot create other Methodists
+        if user and user.is_methodist():
+            self.fields['role'].choices = [
+                (User.UserRole.STUDENT, User.UserRole.STUDENT.label),
+                (User.UserRole.TEACHER, User.UserRole.TEACHER.label),
+            ]
 
 
 class UserUpdateForm(forms.ModelForm):
@@ -36,7 +43,7 @@ class UserUpdateForm(forms.ModelForm):
         model = User
         fields = (
             'username', 'email', 'first_name', 'last_name', 'middle_name',
-            'role', 'phone', 'timezone', 'is_active'
+            'role', 'phone', 'is_active'
         )
         widgets = {
             'username': forms.TextInput(attrs={'class': 'form-control'}),
@@ -46,6 +53,5 @@ class UserUpdateForm(forms.ModelForm):
             'middle_name': forms.TextInput(attrs={'class': 'form-control'}),
             'role': forms.Select(attrs={'class': 'form-select'}),
             'phone': forms.TextInput(attrs={'class': 'form-control'}),
-            'timezone': forms.Select(attrs={'class': 'form-select'}),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }

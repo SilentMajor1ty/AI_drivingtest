@@ -18,13 +18,20 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.conf.urls.i18n import i18n_patterns
+from accounts.views import set_timezone
 
 urlpatterns = [
+    path('i18n/', include('django.conf.urls.i18n')),
+    path('set_timezone/', set_timezone, name='set_timezone'),
+]
+
+urlpatterns += i18n_patterns(
     path('admin/', admin.site.urls),
     path('', include('accounts.urls')),
     path('scheduling/', include('scheduling.urls')),
     path('assignments/', include('assignments.urls')),
-]
+)
 
 # Serve media files in development
 if settings.DEBUG:
