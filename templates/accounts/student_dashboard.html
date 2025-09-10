@@ -25,7 +25,7 @@
                     {% for lesson in upcoming_lessons %}
                         <div class="lesson-card card mb-2">
                             <div class="card-body py-2">
-                                <div class="d-flex justify-content-between">
+                                <div class="d-flex justify-content-between align-items-center">
                                     <div>
                                         <h6 class="mb-1">{{ lesson.title }}</h6>
                                         <small class="text-muted">
@@ -34,10 +34,17 @@
                                         </small>
                                     </div>
                                     <div class="text-end">
-                                        <small class="fw-bold">
+                                        <small class="fw-bold d-block">
                                             {{ lesson.start_time|date:"M d, Y" }}<br>
                                             {{ lesson.start_time|time:"H:i" }}
                                         </small>
+                                        {% if lesson.zoom_link %}
+                                            <a href="{{ lesson.zoom_link }}" target="_blank" 
+                                               class="btn btn-sm btn-success mt-1"
+                                               onclick="handleVideoCall({{ lesson.id }}, '{{ lesson.zoom_link }}')">
+                                                <i class="bi bi-camera-video"></i> Присоединиться
+                                            </a>
+                                        {% endif %}
                                     </div>
                                 </div>
                             </div>
@@ -136,4 +143,88 @@
         </div>
     </div>
 </div>
+
+<!-- Problem Report Modal -->
+<div class="modal fade" id="problemReportModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Сообщить о проблеме</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="problemReportForm">
+                    {% csrf_token %}
+                    <input type="hidden" id="reportLessonId" name="lesson_id">
+                    <div class="mb-3">
+                        <label for="problemType" class="form-label">Тип проблемы</label>
+                        <select class="form-select" id="problemType" name="problem_type" required>
+                            <option value="connection">Проблемы с подключением</option>
+                            <option value="audio">Проблемы со звуком</option>
+                            <option value="video">Проблемы с видео</option>
+                            <option value="technical">Технические проблемы</option>
+                            <option value="other">Другое</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="problemDescription" class="form-label">Описание проблемы</label>
+                        <textarea class="form-control" id="problemDescription" name="description" rows="3" required></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" onclick="submitProblemReport()">Отправить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function handleVideoCall(lessonId, zoomLink) {
+    // Show confirmation for students about problem reporting
+    if (confirm('При возникновении проблем с подключением вы можете сообщить о них. Подключиться к занятию?')) {
+        window.open(zoomLink, '_blank');
+        
+        // Show problem report option after a delay
+        setTimeout(() => {
+            if (confirm('Возникли проблемы с подключением к занятию?')) {
+                showProblemReport(lessonId);
+            }
+        }, 5000); // Show after 5 seconds
+    }
+}
+
+function showProblemReport(lessonId) {
+    document.getElementById('reportLessonId').value = lessonId;
+    new bootstrap.Modal(document.getElementById('problemReportModal')).show();
+}
+
+function submitProblemReport() {
+    const form = document.getElementById('problemReportForm');
+    const formData = new FormData(form);
+    
+    fetch('/scheduling/report-problem/', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Ваш отчет о проблеме отправлен методисту');
+            bootstrap.Modal.getInstance(document.getElementById('problemReportModal')).hide();
+            form.reset();
+        } else {
+            alert('Ошибка при отправке отчета: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Ошибка при отправке отчета');
+    });
+}
+</script>
 {% endblock %}

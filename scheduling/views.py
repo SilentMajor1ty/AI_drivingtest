@@ -301,17 +301,41 @@ def lesson_details_ajax(request, lesson_id):
         'date': lesson.start_time.strftime('%d.%m.%Y'),
         'start_time': lesson.start_time.strftime('%H:%M'),
         'end_time': lesson.end_time.strftime('%H:%M'),
-        'duration': lesson.duration_minutes,
         'status': lesson.get_status_display(),
-        'teacher': lesson.teacher.full_name,
-        'student': lesson.student.full_name,
         'description': lesson.description,
         'zoom_link': lesson.zoom_link,
     }
     
-    # Add teacher materials if user is teacher
-    if request.user.is_teacher() and lesson.teacher_materials:
-        data['teacher_materials'] = lesson.teacher_materials.url
+    # Role-based participant display
+    if request.user.is_student():
+        data['teacher'] = lesson.teacher.full_name
+        # Student sees teacher name, not their own
+    elif request.user.is_teacher():
+        data['student'] = lesson.student.full_name
+        # Teacher sees student name, not their own
+        # Add teacher materials download if available
+        if lesson.teacher_materials:
+            data['teacher_materials'] = {
+                'url': lesson.teacher_materials.url,
+                'name': lesson.teacher_materials.name.split('/')[-1]  # Get filename only
+            }
+    else:  # Methodist
+        data['teacher'] = lesson.teacher.full_name
+        data['student'] = lesson.student.full_name
+        # Methodist sees both names and duration
+        data['duration'] = lesson.duration_minutes
+        if lesson.teacher_materials:
+            data['teacher_materials'] = {
+                'url': lesson.teacher_materials.url,
+                'name': lesson.teacher_materials.name.split('/')[-1]
+            }
+    
+    # Add general materials if available
+    if lesson.materials:
+        data['materials'] = {
+            'url': lesson.materials.url,
+            'name': lesson.materials.name.split('/')[-1]
+        }
     
     return JsonResponse(data)
 

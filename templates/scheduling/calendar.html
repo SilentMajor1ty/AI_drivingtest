@@ -47,17 +47,19 @@
                                              data-lesson-id="{{ lesson.id }}"
                                              onclick="showLessonDetails({{ lesson.id }})">
                                             <div class="d-flex justify-content-between align-items-start mb-2">
-                                                <div class="lesson-time">
-                                                    <small class="text-muted">{{ lesson.start_time|date:"d.m.Y" }}</small>
+                                                <div class="lesson-time flex-grow-1">
+                                                    <h6 class="mb-1">{{ lesson.subject.name }}</h6>
+                                                    <small class="text-muted">{{ lesson.title }}</small>
+                                                </div>
+                                                <div class="lesson-date-time text-end">
+                                                    <small class="text-muted d-block">{{ lesson.start_time|date:"d.m.Y" }}</small>
                                                     <div class="fw-bold">{{ lesson.start_time|time:"H:i" }} - {{ lesson.end_time|time:"H:i" }}</div>
                                                 </div>
+                                            </div>
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
                                                 <span class="badge bg-{% if lesson.status == 'completed' %}success{% elif lesson.status == 'scheduled' %}primary{% else %}secondary{% endif %} lesson-status">
                                                     {{ lesson.get_status_display }}
                                                 </span>
-                                            </div>
-                                            <div class="lesson-subject mb-2">
-                                                <h6 class="mb-1">{{ lesson.subject.name }}</h6>
-                                                <small class="text-muted">{{ lesson.title }}</small>
                                             </div>
                                             <div class="lesson-participants">
                                                 {% if user.is_student %}
@@ -107,8 +109,8 @@
                             <table class="table table-striped">
                                 <thead>
                                     <tr>
-                                        <th>Дата и время</th>
-                                        <th>Занятие</th>
+                                        <th class="lesson-datetime">Дата и время</th>
+                                        <th class="lesson-info">Занятие</th>
                                         {% if user.is_student %}
                                             <th>Преподаватель</th>
                                         {% elif user.is_teacher %}
@@ -125,11 +127,11 @@
                                 <tbody>
                                     {% for lesson in lessons %}
                                     <tr {% if lesson.start_time.date == today %}class="table-warning"{% endif %}>
-                                        <td>
-                                            <strong>{{ lesson.start_time|date:"d.m.Y" }}</strong><br>
+                                        <td class="lesson-datetime">
+                                            <strong>{{ lesson.start_time|date:"d.m.Y" }}</strong>
                                             <small class="text-muted">{{ lesson.start_time|time:"H:i" }} - {{ lesson.end_time|time:"H:i" }}</small>
                                         </td>
-                                        <td>
+                                        <td class="lesson-info">
                                             <strong>{{ lesson.title }}</strong>
                                             {% if lesson.description %}
                                                 <br><small class="text-muted">{{ lesson.description|truncatewords:10 }}</small>
@@ -257,6 +259,36 @@
 .lesson-status {
     font-size: 0.75rem;
 }
+
+.lesson-date-time {
+    min-width: 120px;
+    white-space: nowrap;
+}
+
+.lesson-time .fw-bold {
+    font-size: 0.9rem;
+    color: #495057;
+}
+
+/* Fix overlapping issues in table view */
+.table td {
+    vertical-align: middle;
+    padding: 0.75rem 0.5rem;
+}
+
+.table .lesson-info {
+    min-width: 200px;
+}
+
+.table .lesson-datetime {
+    min-width: 140px;
+    text-align: right;
+}
+
+.table .lesson-datetime small {
+    display: block;
+    margin-bottom: 2px;
+}
 </style>
 
 <script>
@@ -278,6 +310,73 @@ function showLessonDetails(lessonId) {
     fetch(`/scheduling/lessons/${lessonId}/details/`)
         .then(response => response.json())
         .then(data => {
+            let participantsHtml = '';
+            let materialsHtml = '';
+            let durationHtml = '';
+            
+            // Role-based participant display
+            {% if user.is_student %}
+                participantsHtml = `<p><strong>Преподаватель:</strong> ${data.teacher}</p>`;
+            {% elif user.is_teacher %}
+                participantsHtml = `<p><strong>Ученик:</strong> ${data.student}</p>`;
+            {% else %}
+                participantsHtml = `
+                    <p><strong>Преподаватель:</strong> ${data.teacher}</p>
+                    <p><strong>Ученик:</strong> ${data.student}</p>
+                `;
+                durationHtml = `<p><strong>Длительность:</strong> ${data.duration} минут</p>`;
+            {% endif %}
+            
+            // Materials section
+            if (data.materials || data.teacher_materials) {
+                materialsHtml = '<div class="mt-3"><h6>Материалы</h6>';
+                
+                if (data.materials) {
+                    materialsHtml += `
+                        <div class="mb-2">
+                            <a href="${data.materials.url}" class="btn btn-sm btn-outline-info" download>
+                                <i class="bi bi-download"></i> ${data.materials.name}
+                            </a>
+                            <small class="text-muted ms-2">Общие материалы</small>
+                        </div>
+                    `;
+                }
+                
+                {% if user.is_teacher or user.is_methodist %}
+                if (data.teacher_materials) {
+                    materialsHtml += `
+                        <div class="mb-2">
+                            <a href="${data.teacher_materials.url}" class="btn btn-sm btn-outline-warning" download>
+                                <i class="bi bi-download"></i> ${data.teacher_materials.name}
+                            </a>
+                            <small class="text-muted ms-2">Материалы для преподавателя</small>
+                        </div>
+                    `;
+                }
+                {% endif %}
+                
+                materialsHtml += '</div>';
+            }
+            
+            // Join button
+            let joinButtonHtml = '';
+            if (data.zoom_link) {
+                joinButtonHtml = `
+                    <div class="mt-3">
+                        <a href="${data.zoom_link}" target="_blank" 
+                           class="btn btn-success me-2"
+                           onclick="handleVideoCall(${lessonId}, '${data.zoom_link}')">
+                            <i class="bi bi-camera-video"></i> Подключиться к занятию
+                        </a>
+                        {% if user.is_student %}
+                        <button class="btn btn-outline-danger btn-sm" onclick="showProblemReport(${lessonId}); bootstrap.Modal.getInstance(document.getElementById('lessonDetailsModal')).hide();">
+                            <i class="bi bi-exclamation-triangle"></i> Сообщить о проблеме
+                        </button>
+                        {% endif %}
+                    </div>
+                `;
+            }
+            
             document.getElementById('lessonDetailsContent').innerHTML = `
                 <div class="row">
                     <div class="col-md-6">
@@ -286,17 +385,17 @@ function showLessonDetails(lessonId) {
                         <p><strong>Предмет:</strong> ${data.subject}</p>
                         <p><strong>Дата:</strong> ${data.date}</p>
                         <p><strong>Время:</strong> ${data.start_time} - ${data.end_time}</p>
-                        <p><strong>Длительность:</strong> ${data.duration} минут</p>
+                        ${durationHtml}
                         <p><strong>Статус:</strong> <span class="badge bg-primary">${data.status}</span></p>
                     </div>
                     <div class="col-md-6">
                         <h6>Участники</h6>
-                        <p><strong>Преподаватель:</strong> ${data.teacher}</p>
-                        <p><strong>Ученик:</strong> ${data.student}</p>
-                        ${data.zoom_link ? `<p><strong>Ссылка:</strong> <a href="${data.zoom_link}" target="_blank" class="btn btn-sm btn-success"><i class="bi bi-camera-video"></i> Подключиться</a></p>` : ''}
+                        ${participantsHtml}
+                        ${joinButtonHtml}
                     </div>
                 </div>
                 ${data.description ? `<div class="mt-3"><h6>Описание</h6><p>${data.description}</p></div>` : ''}
+                ${materialsHtml}
             `;
             new bootstrap.Modal(document.getElementById('lessonDetailsModal')).show();
         })
