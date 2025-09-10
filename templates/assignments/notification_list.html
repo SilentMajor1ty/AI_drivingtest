@@ -1,0 +1,233 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% load notification_extras %}
+
+{% block title %}{% trans "Уведомления" %} - {% trans "Автошкола" %}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-bell"></i> {% trans "Уведомления" %}</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        {% if notifications %}
+        <div class="btn-group me-2">
+            <button class="btn btn-outline-secondary btn-sm" onclick="markAllAsRead()">
+                <i class="bi bi-check-all"></i> {% trans "Отметить все как прочитанные" %}
+            </button>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% if notifications %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body p-0">
+                {% for notification in notifications %}
+                <div class="notification-item-full {% if not notification.is_read %}notification-unread{% endif %}" 
+                     id="notification-{{ notification.id }}">
+                    <div class="p-3 border-bottom">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div class="notification-meta">
+                                <span class="badge bg-{{ notification.notification_type|notification_type_color }} me-2">
+                                    <i class="bi bi-{{ notification.notification_type|notification_type_icon }}"></i>
+                                </span>
+                                <small class="text-muted">{{ notification.sent_at|date:"d.m.Y H:i" }}</small>
+                            </div>
+                            {% if not notification.is_read %}
+                            <button class="btn btn-sm btn-outline-primary" 
+                                    onclick="markAsRead({{ notification.id }})">
+                                <i class="bi bi-check"></i> {% trans "Отметить как прочитанное" %}
+                            </button>
+                            {% endif %}
+                        </div>
+                        
+                        <h6 class="notification-title mb-2">{{ notification.title }}</h6>
+                        <p class="notification-message mb-0">{{ notification.message }}</p>
+                        
+                        {% if notification.lesson %}
+                        <div class="mt-2">
+                            <a href="{% url 'scheduling:lesson_detail' notification.lesson.id %}" 
+                               class="btn btn-sm btn-outline-info">
+                                <i class="bi bi-calendar-event"></i> {% trans "Перейти к занятию" %}
+                            </a>
+                        </div>
+                        {% endif %}
+                        
+                        {% if notification.assignment %}
+                        <div class="mt-2">
+                            <a href="{% url 'assignments:assignment_detail' notification.assignment.id %}" 
+                               class="btn btn-sm btn-outline-warning">
+                                <i class="bi bi-journal-text"></i> {% trans "Перейти к заданию" %}
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Pagination -->
+{% if is_paginated %}
+<nav aria-label="{% trans 'Навигация по страницам' %}" class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}">
+                <i class="bi bi-chevron-left"></i> {% trans "Предыдущая" %}
+            </a>
+        </li>
+        {% endif %}
+        
+        {% for page_num in page_obj.paginator.page_range %}
+        {% if page_num == page_obj.number %}
+        <li class="page-item active">
+            <span class="page-link">{{ page_num }}</span>
+        </li>
+        {% elif page_num > page_obj.number|add:'-3' and page_num < page_obj.number|add:'3' %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_num }}">{{ page_num }}</a>
+        </li>
+        {% endif %}
+        {% endfor %}
+        
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}">
+                {% trans "Следующая" %} <i class="bi bi-chevron-right"></i>
+            </a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+{% else %}
+<div class="row">
+    <div class="col-12">
+        <div class="card text-center">
+            <div class="card-body py-5">
+                <i class="bi bi-bell-slash display-1 text-muted mb-3"></i>
+                <h4 class="text-muted mb-3">{% trans "Нет уведомлений" %}</h4>
+                <p class="text-muted">{% trans "Здесь будут отображаться ваши уведомления" %}</p>
+                <a href="{% url 'accounts:dashboard' %}" class="btn btn-primary">
+                    <i class="bi bi-house"></i> {% trans "Вернуться на главную" %}
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<style>
+.notification-item-full {
+    transition: all 0.2s ease;
+}
+
+.notification-item-full:hover {
+    background-color: #f8f9fa;
+}
+
+.notification-unread {
+    background-color: #e3f2fd;
+    border-left: 4px solid #2196f3;
+}
+
+.notification-title {
+    color: #333;
+    font-weight: 600;
+}
+
+.notification-message {
+    color: #666;
+    line-height: 1.5;
+}
+</style>
+
+<script>
+function markAsRead(notificationId) {
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (!csrfToken) {
+        console.warn('CSRF token not found');
+        return;
+    }
+    
+    fetch(`/assignments/notifications/${notificationId}/read/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrfToken.value,
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            // Update the notification item
+            const notificationElement = document.getElementById(`notification-${notificationId}`);
+            if (notificationElement) {
+                notificationElement.classList.remove('notification-unread');
+                const button = notificationElement.querySelector('button');
+                if (button) {
+                    button.remove();
+                }
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error marking notification as read:', error);
+    });
+}
+
+function markAllAsRead() {
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (!csrfToken) {
+        console.warn('CSRF token not found');
+        return;
+    }
+    
+    fetch('/assignments/notifications/mark-all-read/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrfToken.value,
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            // Remove unread styling from all notifications
+            const unreadNotifications = document.querySelectorAll('.notification-unread');
+            unreadNotifications.forEach(notification => {
+                notification.classList.remove('notification-unread');
+                const button = notification.querySelector('button');
+                if (button) {
+                    button.remove();
+                }
+            });
+            
+            // Hide the "Mark all as read" button
+            const markAllButton = document.querySelector('[onclick="markAllAsRead()"]');
+            if (markAllButton) {
+                markAllButton.style.display = 'none';
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error marking all notifications as read:', error);
+    });
+}
+
+// Add CSRF token for AJAX requests
+document.addEventListener('DOMContentLoaded', function() {
+    // Create a hidden CSRF token input if it doesn't exist
+    if (!document.querySelector('[name=csrfmiddlewaretoken]')) {
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = '{{ csrf_token }}';
+        document.body.appendChild(csrfInput);
+    }
+});
+</script>
+{% endblock %}

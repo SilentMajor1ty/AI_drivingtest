@@ -253,6 +253,65 @@ class ScheduleView(LoginRequiredMixin, ListView):
 
 
 @login_required
+def teacher_lesson_management(request):
+    """Teacher lesson management page with filters - Teachers only"""
+    if not request.user.is_teacher():
+        messages.error(request, "Access denied. Only teachers can view this page.")
+        return redirect('accounts:dashboard')
+    
+    # Get filter parameters
+    status_filter = request.GET.get('status', '')
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
+    student_filter = request.GET.get('student', '')
+    
+    # Base queryset
+    lessons = Lesson.objects.filter(teacher=request.user).select_related('student', 'subject').order_by('-start_time')
+    
+    # Apply filters
+    if status_filter:
+        lessons = lessons.filter(status=status_filter)
+    
+    if date_from:
+        try:
+            from_date = timezone.datetime.strptime(date_from, '%Y-%m-%d').date()
+            lessons = lessons.filter(start_time__date__gte=from_date)
+        except ValueError:
+            pass
+    
+    if date_to:
+        try:
+            to_date = timezone.datetime.strptime(date_to, '%Y-%m-%d').date()
+            lessons = lessons.filter(start_time__date__lte=to_date)
+        except ValueError:
+            pass
+    
+    if student_filter:
+        lessons = lessons.filter(student__id=student_filter)
+    
+    # Get all students for filter dropdown
+    from accounts.models import User
+    students = User.objects.filter(
+        role=User.UserRole.STUDENT,
+        student_lessons__teacher=request.user
+    ).distinct().order_by('first_name', 'last_name')
+    
+    context = {
+        'lessons': lessons,
+        'students': students,
+        'status_choices': Lesson.LessonStatus.choices,
+        'current_filters': {
+            'status': status_filter,
+            'date_from': date_from,
+            'date_to': date_to,
+            'student': student_filter,
+        }
+    }
+    
+    return render(request, 'scheduling/teacher_lesson_management.html', context)
+
+
+@login_required
 def teacher_schedule(request, teacher_id):
     """View specific teacher's schedule - Methodist only"""
     if not request.user.is_methodist():
@@ -301,17 +360,41 @@ def lesson_details_ajax(request, lesson_id):
         'date': lesson.start_time.strftime('%d.%m.%Y'),
         'start_time': lesson.start_time.strftime('%H:%M'),
         'end_time': lesson.end_time.strftime('%H:%M'),
-        'duration': lesson.duration_minutes,
         'status': lesson.get_status_display(),
-        'teacher': lesson.teacher.full_name,
-        'student': lesson.student.full_name,
         'description': lesson.description,
         'zoom_link': lesson.zoom_link,
     }
     
-    # Add teacher materials if user is teacher
-    if request.user.is_teacher() and lesson.teacher_materials:
-        data['teacher_materials'] = lesson.teacher_materials.url
+    # Role-based participant display
+    if request.user.is_student():
+        data['teacher'] = lesson.teacher.full_name
+        # Student sees teacher name, not their own
+    elif request.user.is_teacher():
+        data['student'] = lesson.student.full_name
+        # Teacher sees student name, not their own
+        # Add teacher materials download if available
+        if lesson.teacher_materials:
+            data['teacher_materials'] = {
+                'url': lesson.teacher_materials.url,
+                'name': lesson.teacher_materials.name.split('/')[-1]  # Get filename only
+            }
+    else:  # Methodist
+        data['teacher'] = lesson.teacher.full_name
+        data['student'] = lesson.student.full_name
+        # Methodist sees both names and duration
+        data['duration'] = lesson.duration_minutes
+        if lesson.teacher_materials:
+            data['teacher_materials'] = {
+                'url': lesson.teacher_materials.url,
+                'name': lesson.teacher_materials.name.split('/')[-1]
+            }
+    
+    # Add general materials if available
+    if lesson.materials:
+        data['materials'] = {
+            'url': lesson.materials.url,
+            'name': lesson.materials.name.split('/')[-1]
+        }
     
     return JsonResponse(data)
 

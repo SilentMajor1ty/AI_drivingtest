@@ -1,0 +1,303 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block title %}{{ assignment.title }} - {% trans "Автошкола" %}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="bi bi-journal-text"></i> {{ assignment.title }}
+    </h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <a href="{% url 'assignments:assignment_list' %}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left"></i> {% trans "Назад к списку" %}
+            </a>
+            {% if user.is_teacher and assignment.lesson.teacher == user %}
+            <a href="{% url 'assignments:assignment_create' %}" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-plus"></i> {% trans "Новое задание" %}
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <!-- Assignment Info -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-info-circle"></i> {% trans "Информация о задании" %}
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>{% trans "Занятие" %}:</strong> {{ assignment.lesson.title }}</p>
+                        <p><strong>{% trans "Предмет" %}:</strong> {{ assignment.lesson.subject.name }}</p>
+                        {% if user.is_student %}
+                        <p><strong>{% trans "Преподаватель" %}:</strong> {{ assignment.lesson.teacher.full_name }}</p>
+                        {% elif user.is_teacher %}
+                        <p><strong>{% trans "Ученик" %}:</strong> {{ assignment.student.full_name }}</p>
+                        {% else %}
+                        <p><strong>{% trans "Преподаватель" %}:</strong> {{ assignment.lesson.teacher.full_name }}</p>
+                        <p><strong>{% trans "Ученик" %}:</strong> {{ assignment.student.full_name }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>{% trans "Срок сдачи" %}:</strong> 
+                            <span class="{% if assignment.is_overdue %}text-danger{% elif assignment.days_until_due <= 2 %}text-warning{% endif %}">
+                                {{ assignment.due_date|date:"d.m.Y H:i" }}
+                            </span>
+                        </p>
+                        <p><strong>{% trans "Статус" %}:</strong> 
+                            <span class="badge bg-{% if assignment.status == 'completed' %}success{% elif assignment.status == 'submitted' %}info{% elif assignment.status == 'reviewed' %}primary{% elif assignment.is_overdue %}danger{% else %}secondary{% endif %}">
+                                {{ assignment.get_status_display }}
+                            </span>
+                        </p>
+                        <p><strong>{% trans "Создано" %}:</strong> {{ assignment.created_at|date:"d.m.Y H:i" }}</p>
+                        {% if assignment.grade %}
+                        <p><strong>{% trans "Оценка" %}:</strong> 
+                            <span class="badge bg-success fs-6">{{ assignment.grade }}/10</span>
+                        </p>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="mt-3">
+                    <h6>{% trans "Описание задания" %}</h6>
+                    <div class="bg-light p-3 rounded">
+                        {{ assignment.description|linebreaks }}
+                    </div>
+                </div>
+                
+                {% if assignment.assignment_file %}
+                <div class="mt-3">
+                    <h6>{% trans "Материалы задания" %}</h6>
+                    <a href="{{ assignment.assignment_file.url }}" class="btn btn-outline-info" download>
+                        <i class="bi bi-download"></i> {% trans "Скачать материалы" %}
+                    </a>
+                </div>
+                {% endif %}
+                
+                {% if assignment.teacher_comments %}
+                <div class="mt-3">
+                    <h6>{% trans "Комментарий преподавателя" %}</h6>
+                    <div class="bg-success bg-opacity-10 p-3 rounded border-start border-success border-3">
+                        {{ assignment.teacher_comments|linebreaks }}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Submissions -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-upload"></i> {% trans "Сдача работы" %}
+                </h5>
+                {% if user.is_student and assignment.student == user and assignment.status in 'assigned,in_progress,needs_revision' %}
+                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#submitModal">
+                    <i class="bi bi-plus"></i> {% trans "Сдать работу" %}
+                </button>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                {% if submissions %}
+                    {% for submission in submissions %}
+                    <div class="submission-item border-bottom pb-3 mb-3">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h6 class="mb-1">
+                                    {% trans "Версия" %} {{ submission.version }}
+                                    {% if submission.is_final %}
+                                        <span class="badge bg-success">{% trans "Финальная" %}</span>
+                                    {% endif %}
+                                </h6>
+                                <small class="text-muted">
+                                    {% trans "Загружено" %}: {{ submission.submitted_at|date:"d.m.Y H:i" }}
+                                </small>
+                                {% if submission.comments %}
+                                <p class="mt-2 mb-2">{{ submission.comments }}</p>
+                                {% endif %}
+                            </div>
+                            <div class="text-end">
+                                <a href="{{ submission.submission_file.url }}" class="btn btn-outline-primary btn-sm" download>
+                                    <i class="bi bi-download"></i> {% trans "Скачать" %}
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="bi bi-file-earmark-x display-4"></i>
+                        <p class="mt-2">{% trans "Работа еще не сдана" %}</p>
+                        {% if user.is_student and assignment.student == user %}
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#submitModal">
+                            <i class="bi bi-upload"></i> {% trans "Сдать работу" %}
+                        </button>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <!-- Assignment Status Card -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-speedometer2"></i> {% trans "Прогресс" %}
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if assignment.is_overdue %}
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        {% trans "Задание просрочено!" %}
+                    </div>
+                {% elif assignment.days_until_due <= 2 %}
+                    <div class="alert alert-warning">
+                        <i class="bi bi-clock"></i>
+                        {% trans "Срок сдачи скоро истечет!" %}
+                    </div>
+                {% endif %}
+                
+                <div class="progress mb-3">
+                    <div class="progress-bar 
+                        {% if assignment.status == 'completed' %}bg-success
+                        {% elif assignment.status in 'submitted,reviewed' %}bg-info
+                        {% elif assignment.is_overdue %}bg-danger
+                        {% else %}bg-secondary{% endif %}" 
+                        role="progressbar" 
+                        style="width: {% if assignment.status == 'completed' %}100{% elif assignment.status in 'submitted,reviewed' %}75{% elif assignment.status == 'in_progress' %}50{% else %}25{% endif %}%">
+                    </div>
+                </div>
+                
+                <ul class="list-unstyled">
+                    <li class="{% if assignment.status != 'assigned' %}text-success{% endif %}">
+                        <i class="bi bi-{% if assignment.status != 'assigned' %}check-circle-fill{% else %}circle{% endif %}"></i>
+                        {% trans "Задание получено" %}
+                    </li>
+                    <li class="{% if assignment.status in 'submitted,reviewed,completed' %}text-success{% endif %}">
+                        <i class="bi bi-{% if assignment.status in 'submitted,reviewed,completed' %}check-circle-fill{% else %}circle{% endif %}"></i>
+                        {% trans "Работа сдана" %}
+                    </li>
+                    <li class="{% if assignment.status in 'reviewed,completed' %}text-success{% endif %}">
+                        <i class="bi bi-{% if assignment.status in 'reviewed,completed' %}check-circle-fill{% else %}circle{% endif %}"></i>
+                        {% trans "Работа проверена" %}
+                    </li>
+                    <li class="{% if assignment.status == 'completed' %}text-success{% endif %}">
+                        <i class="bi bi-{% if assignment.status == 'completed' %}check-circle-fill{% else %}circle{% endif %}"></i>
+                        {% trans "Задание завершено" %}
+                    </li>
+                </ul>
+            </div>
+        </div>
+        
+        <!-- Teacher Actions -->
+        {% if user.is_teacher and assignment.lesson.teacher == user and assignment.status in 'submitted,reviewed' %}
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-clipboard-check"></i> {% trans "Действия преподавателя" %}
+                </h5>
+            </div>
+            <div class="card-body">
+                <button class="btn btn-success w-100 mb-2" data-bs-toggle="modal" data-bs-target="#gradeModal">
+                    <i class="bi bi-award"></i> {% trans "Оценить работу" %}
+                </button>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Submit Assignment Modal -->
+{% if user.is_student and assignment.student == user %}
+<div class="modal fade" id="submitModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">{% trans "Сдать работу" %}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{% url 'assignments:submit_assignment' assignment.pk %}" method="post" enctype="multipart/form-data">
+                <div class="modal-body">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="submission_file" class="form-label">{% trans "Файл работы" %} *</label>
+                        <input type="file" class="form-control" name="submission_file" id="submission_file" required>
+                        <div class="form-text">{% trans "Разрешены файлы: PDF, DOC, DOCX, TXT, JPG, PNG, ZIP" %}</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="comments" class="form-label">{% trans "Комментарий (необязательно)" %}</label>
+                        <textarea class="form-control" name="comments" id="comments" rows="3" 
+                                  placeholder="Добавьте комментарий к вашей работе"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{% trans "Отмена" %}</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-upload"></i> {% trans "Сдать работу" %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Grade Assignment Modal -->
+{% if user.is_teacher and assignment.lesson.teacher == user %}
+<div class="modal fade" id="gradeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">{% trans "Оценить работу" %}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{% url 'assignments:grade_assignment' assignment.pk %}" method="post">
+                <div class="modal-body">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="grade" class="form-label">{% trans "Оценка (1-10)" %} *</label>
+                        <select class="form-select" name="grade" id="grade" required>
+                            <option value="">{% trans "Выберите оценку" %}</option>
+                            {% for i in "12345678910"|make_list %}
+                            <option value="{{ forloop.counter }}" {% if assignment.grade == forloop.counter %}selected{% endif %}>
+                                {{ forloop.counter }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="teacher_comments" class="form-label">{% trans "Комментарий" %}</label>
+                        <textarea class="form-control" name="teacher_comments" id="teacher_comments" rows="4" 
+                                  placeholder="Добавьте комментарий к работе ученика">{{ assignment.teacher_comments }}</textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{% trans "Отмена" %}</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-lg"></i> {% trans "Поставить оценку" %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<style>
+.submission-item:last-child {
+    border-bottom: none !important;
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+}
+</style>
+{% endblock %}

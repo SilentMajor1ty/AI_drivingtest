@@ -23,7 +23,7 @@
                     {% for lesson in today_lessons %}
                         <div class="lesson-card card mb-2">
                             <div class="card-body py-2">
-                                <div class="d-flex justify-content-between">
+                                <div class="d-flex justify-content-between align-items-center">
                                     <div>
                                         <h6 class="mb-1">{{ lesson.title }}</h6>
                                         <small class="text-muted">
@@ -32,9 +32,15 @@
                                         </small>
                                     </div>
                                     <div class="text-end">
-                                        <small class="fw-bold">
+                                        <small class="fw-bold d-block">
                                             {{ lesson.start_time|time:"H:i" }} - {{ lesson.end_time|time:"H:i" }}
                                         </small>
+                                        {% if lesson.zoom_link %}
+                                            <a href="{{ lesson.zoom_link }}" target="_blank" 
+                                               class="btn btn-sm btn-success mt-1">
+                                                <i class="bi bi-camera-video"></i> Присоединиться
+                                            </a>
+                                        {% endif %}
                                     </div>
                                 </div>
                             </div>
@@ -78,6 +84,46 @@
                 {% else %}
                     <p class="text-muted text-center">No recent submissions.</p>
                 {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-lightning"></i> Quick Actions
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <a href="{% url 'scheduling:calendar' %}" class="btn btn-outline-primary btn-lg w-100 mb-2">
+                            <i class="bi bi-calendar3"></i><br>
+                            View Calendar
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{% url 'scheduling:teacher_lesson_management' %}" class="btn btn-outline-info btn-lg w-100 mb-2">
+                            <i class="bi bi-calendar-check"></i><br>
+                            Manage Lessons
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{% url 'assignments:assignment_create' %}" class="btn btn-outline-warning btn-lg w-100 mb-2">
+                            <i class="bi bi-journal-plus"></i><br>
+                            Create Assignment
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{% url 'accounts:profile' %}" class="btn btn-outline-secondary btn-lg w-100 mb-2">
+                            <i class="bi bi-person"></i><br>
+                            My Profile
+                        </a>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

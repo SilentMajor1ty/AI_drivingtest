@@ -5,6 +5,7 @@ from django.views.generic import ListView, CreateView, DetailView
 from django.urls import reverse_lazy
 from django.contrib import messages
 from django.http import JsonResponse
+from django.utils import timezone
 
 from .models import Assignment, AssignmentSubmission, Notification
 
@@ -150,6 +151,60 @@ def mark_notification_read(request, pk):
     notification.mark_as_read()
     
     return JsonResponse({'status': 'success'})
+
+
+@login_required
+def mark_all_notifications_read(request):
+    """Mark all notifications as read for the current user"""
+    if request.method == 'POST':
+        notifications = Notification.objects.filter(user=request.user, is_read=False)
+        notifications.update(is_read=True, read_at=timezone.now())
+        return JsonResponse({'status': 'success', 'count': notifications.count()})
+    
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
+
+
+@login_required
+def grade_assignment(request, pk):
+    """Grade assignment - Teachers only"""
+    assignment = get_object_or_404(Assignment, pk=pk)
+    
+    if not request.user.is_teacher() or request.user != assignment.lesson.teacher:
+        messages.error(request, "You can only grade assignments for your own students.")
+        return redirect('assignments:assignment_detail', pk=pk)
+    
+    if request.method == 'POST':
+        grade = request.POST.get('grade')
+        teacher_comments = request.POST.get('teacher_comments', '')
+        
+        if not grade:
+            messages.error(request, "Please select a grade.")
+            return redirect('assignments:assignment_detail', pk=pk)
+        
+        try:
+            grade = int(grade)
+            if grade < 1 or grade > 10:
+                raise ValueError("Grade must be between 1 and 10")
+        except ValueError:
+            messages.error(request, "Please enter a valid grade (1-10).")
+            return redirect('assignments:assignment_detail', pk=pk)
+        
+        # Update assignment
+        assignment.mark_reviewed(teacher_comments, grade)
+        
+        # Create notification for student
+        Notification.objects.create(
+            user=assignment.student,
+            notification_type=Notification.NotificationType.ASSIGNMENT_REVIEWED,
+            title=f"Задание оценено: {assignment.title}",
+            message=f"Ваше задание '{assignment.title}' проверено и оценено. Оценка: {grade}/10",
+            assignment=assignment
+        )
+        
+        messages.success(request, f"Assignment graded successfully! Grade: {grade}/10")
+        return redirect('assignments:assignment_detail', pk=pk)
+    
+    return redirect('assignments:assignment_detail', pk=pk)
 
 
 @login_required

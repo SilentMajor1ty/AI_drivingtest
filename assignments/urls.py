@@ -9,9 +9,11 @@ urlpatterns = [
     path('create/', views.AssignmentCreateView.as_view(), name='assignment_create'),
     path('<int:pk>/', views.AssignmentDetailView.as_view(), name='assignment_detail'),
     path('<int:pk>/submit/', views.submit_assignment, name='submit_assignment'),
+    path('<int:pk>/grade/', views.grade_assignment, name='grade_assignment'),
     
     # Notifications
     path('notifications/', views.NotificationListView.as_view(), name='notification_list'),
     path('notifications/<int:pk>/read/', views.mark_notification_read, name='mark_notification_read'),
+    path('notifications/mark-all-read/', views.mark_all_notifications_read, name='mark_all_notifications_read'),
     path('api/notifications/', views.get_notifications_api, name='notifications_api'),
 ]

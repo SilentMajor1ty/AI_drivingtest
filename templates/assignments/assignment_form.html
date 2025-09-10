@@ -1,0 +1,230 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block title %}
+{% if object %}
+    {% trans "Редактировать задание" %} - {% trans "Автошкола" %}
+{% else %}
+    {% trans "Создать задание" %} - {% trans "Автошкола" %}
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="bi bi-journal-plus"></i>
+        {% if object %}
+            {% trans "Редактировать задание" %}
+        {% else %}
+            {% trans "Создать задание" %}
+        {% endif %}
+    </h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <a href="{% url 'assignments:assignment_list' %}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left"></i> {% trans "Назад к списку" %}
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-info-circle"></i> {% trans "Информация о задании" %}
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    
+                    {% if form.errors %}
+                    <div class="alert alert-danger">
+                        <h6><i class="bi bi-exclamation-triangle"></i> {% trans "Пожалуйста, исправьте следующие ошибки" %}:</h6>
+                        <ul class="mb-0">
+                            {% for field, errors in form.errors.items %}
+                                {% for error in errors %}
+                                    <li>{{ field|capfirst }}: {{ error }}</li>
+                                {% endfor %}
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="mb-3">
+                                <label for="{{ form.title.id_for_label }}" class="form-label">
+                                    <i class="bi bi-card-text"></i> {% trans "Название задания" %} *
+                                </label>
+                                {{ form.title }}
+                                {% if form.title.help_text %}
+                                <div class="form-text">{{ form.title.help_text }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="{{ form.lesson.id_for_label }}" class="form-label">
+                                    <i class="bi bi-calendar-event"></i> {% trans "Занятие" %} *
+                                </label>
+                                {{ form.lesson }}
+                                {% if form.lesson.help_text %}
+                                <div class="form-text">{{ form.lesson.help_text }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="{{ form.student.id_for_label }}" class="form-label">
+                                    <i class="bi bi-person"></i> {% trans "Ученик" %} *
+                                </label>
+                                {{ form.student }}
+                                {% if form.student.help_text %}
+                                <div class="form-text">{{ form.student.help_text }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="{{ form.description.id_for_label }}" class="form-label">
+                            <i class="bi bi-text-paragraph"></i> {% trans "Описание задания" %} *
+                        </label>
+                        {{ form.description }}
+                        {% if form.description.help_text %}
+                        <div class="form-text">{{ form.description.help_text }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="{{ form.due_date.id_for_label }}" class="form-label">
+                                    <i class="bi bi-calendar-x"></i> {% trans "Срок сдачи" %} *
+                                </label>
+                                {{ form.due_date }}
+                                {% if form.due_date.help_text %}
+                                <div class="form-text">{{ form.due_date.help_text }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="{{ form.assignment_file.id_for_label }}" class="form-label">
+                                    <i class="bi bi-paperclip"></i> {% trans "Материалы задания" %}
+                                </label>
+                                {{ form.assignment_file }}
+                                {% if form.assignment_file.help_text %}
+                                <div class="form-text">{{ form.assignment_file.help_text }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-check-lg"></i>
+                                {% if object %}{% trans "Обновить задание" %}{% else %}{% trans "Создать задание" %}{% endif %}
+                            </button>
+                            <a href="{% url 'assignments:assignment_list' %}" class="btn btn-secondary ms-2">
+                                <i class="bi bi-x-lg"></i> {% trans "Отмена" %}
+                            </a>
+                        </div>
+                        {% if object %}
+                        <div>
+                            <a href="{% url 'assignments:assignment_detail' object.pk %}" class="btn btn-outline-info">
+                                <i class="bi bi-eye"></i> {% trans "Просмотр" %}
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-lightbulb"></i> {% trans "Советы" %}
+                </h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled">
+                    <li class="mb-2">
+                        <i class="bi bi-check-circle text-success"></i>
+                        <small>{% trans "Используйте четкое и понятное название задания" %}</small>
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-check-circle text-success"></i>
+                        <small>{% trans "Опишите задание подробно, чтобы ученик понимал, что от него требуется" %}</small>
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-check-circle text-success"></i>
+                        <small>{% trans "Установите реалистичный срок для выполнения задания" %}</small>
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-check-circle text-success"></i>
+                        <small>{% trans "Приложите необходимые материалы, если они есть" %}</small>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        
+        {% if user.is_teacher %}
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-clock-history"></i> {% trans "Управление заданиями" %}
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{% url 'assignments:assignment_list' %}" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-list-ul"></i> {% trans "Все мои задания" %}
+                    </a>
+                    <a href="{% url 'scheduling:teacher_lesson_management' %}" class="btn btn-outline-info btn-sm">
+                        <i class="bi bi-calendar-check"></i> {% trans "Мои занятия" %}
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Set minimum date for due_date to today
+    const dueDateInput = document.getElementById('{{ form.due_date.id_for_label }}');
+    if (dueDateInput) {
+        const today = new Date().toISOString().split('T')[0];
+        dueDateInput.setAttribute('min', today);
+    }
+    
+    // Auto-populate student based on lesson selection
+    const lessonSelect = document.getElementById('{{ form.lesson.id_for_label }}');
+    const studentSelect = document.getElementById('{{ form.student.id_for_label }}');
+    
+    if (lessonSelect && studentSelect) {
+        lessonSelect.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            if (selectedOption && selectedOption.text.includes(' - ')) {
+                // Extract student name from lesson text (assuming format: "Lesson Title - Student Name")
+                const lessonText = selectedOption.text;
+                // This would need actual lesson data to work properly
+                // For now, we'll just show the relationship exists
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
