@@ -39,6 +39,69 @@
         .notification-badge {
             position: relative;
         }
+        
+        /* Improved notification dropdown styling */
+        .notification-dropdown {
+            min-width: 380px;
+            max-width: 400px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .notification-item {
+            border-bottom: 1px solid #eee;
+            padding: 0.75rem;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        
+        .notification-item:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .notification-item:last-child {
+            border-bottom: none;
+        }
+        
+        .notification-unread {
+            background-color: #e3f2fd;
+            border-left: 3px solid #2196f3;
+        }
+        
+        .notification-meta {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 0.25rem;
+        }
+        
+        .notification-title {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+            color: #333;
+            font-size: 0.9rem;
+        }
+        
+        .notification-message {
+            color: #666;
+            font-size: 0.85rem;
+            line-height: 1.4;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+        
+        .notification-time {
+            color: #999;
+            font-size: 0.75rem;
+        }
+        
+        .notification-unread-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #2196f3;
+            border-radius: 50%;
+            margin-left: auto;
+        }
     </style>
 </head>
 <body>
@@ -89,13 +152,18 @@
                             <i class="bi bi-bell"></i>
                             <span class="badge bg-danger notification-count" id="notificationCount" style="display: none;">0</span>
                         </a>
-                        <div class="dropdown-menu dropdown-menu-end" style="width: 350px;" id="notificationDropdown">
+                        <div class="dropdown-menu dropdown-menu-end notification-dropdown" id="notificationDropdown">
                             <div class="dropdown-header d-flex justify-content-between align-items-center">
-                                <span>Уведомления</span>
-                                <a href="{% url 'assignments:notification_list' %}" class="small">Все уведомления</a>
+                                <span><i class="bi bi-bell"></i> Уведомления</span>
+                                <a href="{% url 'assignments:notification_list' %}" class="small text-decoration-none">Все</a>
                             </div>
                             <div id="notificationList">
                                 <!-- Notifications will be loaded here -->
+                            </div>
+                            <div class="dropdown-footer text-center p-2 border-top">
+                                <a href="{% url 'assignments:notification_list' %}" class="small text-decoration-none">
+                                    <i class="bi bi-arrow-right"></i> Показать все уведомления
+                                </a>
                             </div>
                         </div>
                     </li>
@@ -230,17 +298,17 @@
                     
                     // Update notification list
                     if (data.notifications.length === 0) {
-                        notificationList.innerHTML = '<div class="dropdown-item-text text-muted">Нет уведомлений</div>';
+                        notificationList.innerHTML = '<div class="notification-item text-center text-muted py-3">Нет уведомлений</div>';
                     } else {
                         notificationList.innerHTML = data.notifications.map(notification => `
-                            <div class="dropdown-item ${!notification.is_read ? 'bg-light' : ''}" 
+                            <div class="notification-item ${!notification.is_read ? 'notification-unread' : ''}" 
                                  onclick="markAsRead(${notification.id})">
-                                <div class="d-flex justify-content-between">
-                                    <small class="text-muted">${notification.sent_at}</small>
-                                    ${!notification.is_read ? '<i class="bi bi-dot text-primary"></i>' : ''}
+                                <div class="notification-meta">
+                                    <span class="notification-time">${notification.sent_at}</span>
+                                    ${!notification.is_read ? '<div class="notification-unread-dot"></div>' : ''}
                                 </div>
-                                <div class="fw-bold">${notification.title}</div>
-                                <div class="text-muted small">${notification.message}</div>
+                                <div class="notification-title">${notification.title}</div>
+                                <div class="notification-message">${notification.message}</div>
                             </div>
                         `).join('');
                     }
@@ -250,7 +318,7 @@
                     // Set fallback empty state
                     const notificationList = document.getElementById('notificationList');
                     if (notificationList) {
-                        notificationList.innerHTML = '<div class="dropdown-item-text text-muted">Нет уведомлений</div>';
+                        notificationList.innerHTML = '<div class="notification-item text-center text-muted py-3">Ошибка загрузки уведомлений</div>';
                     }
                 });
         }

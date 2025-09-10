@@ -5,6 +5,7 @@ from django.views.generic import ListView, CreateView, DetailView
 from django.urls import reverse_lazy
 from django.contrib import messages
 from django.http import JsonResponse
+from django.utils import timezone
 
 from .models import Assignment, AssignmentSubmission, Notification
 
@@ -150,6 +151,17 @@ def mark_notification_read(request, pk):
     notification.mark_as_read()
     
     return JsonResponse({'status': 'success'})
+
+
+@login_required
+def mark_all_notifications_read(request):
+    """Mark all notifications as read for the current user"""
+    if request.method == 'POST':
+        notifications = Notification.objects.filter(user=request.user, is_read=False)
+        notifications.update(is_read=True, read_at=timezone.now())
+        return JsonResponse({'status': 'success', 'count': notifications.count()})
+    
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
 
 
 @login_required
