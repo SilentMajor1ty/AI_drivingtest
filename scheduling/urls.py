@@ -26,4 +26,5 @@ urlpatterns = [
     path('schedule/', views.ScheduleView.as_view(), name='schedule'),
     path('teacher-lessons/', views.teacher_lesson_management, name='teacher_lesson_management'),
     path('teacher-schedule/<int:teacher_id>/', views.teacher_schedule, name='teacher_schedule'),
+    path('methodist/weekly-lessons/', views.methodist_weekly_lessons, name='methodist_weekly_lessons'),
 ]

@@ -154,14 +154,24 @@ def submit_assignment(request, pk):
             comments=comments
         )
         
-        # Create notification for teacher
-        Notification.objects.create(
-            user=assignment.lesson.teacher,
-            notification_type=Notification.NotificationType.ASSIGNMENT_SUBMITTED,
-            title=f"Assignment submitted: {assignment.title}",
-            message=f"{assignment.student.full_name} has submitted the assignment '{assignment.title}'",
-            assignment=assignment
-        )
+        # Create notification for teacher (if lesson has a teacher)
+        if assignment.lesson and assignment.lesson.teacher:
+            Notification.objects.create(
+                user=assignment.lesson.teacher,
+                notification_type=Notification.NotificationType.ASSIGNMENT_SUBMITTED,
+                title=f"Assignment submitted: {assignment.title}",
+                message=f"{assignment.student.full_name} has submitted the assignment '{assignment.title}'",
+                assignment=assignment
+            )
+        elif assignment.created_by:
+            # If no lesson teacher, notify the person who created the assignment
+            Notification.objects.create(
+                user=assignment.created_by,
+                notification_type=Notification.NotificationType.ASSIGNMENT_SUBMITTED,
+                title=f"Assignment submitted: {assignment.title}",
+                message=f"{assignment.student.full_name} has submitted the assignment '{assignment.title}'",
+                assignment=assignment
+            )
         
         messages.success(request, "Assignment submitted successfully!")
         return redirect('assignments:assignment_detail', pk=pk)

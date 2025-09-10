@@ -288,8 +288,8 @@
                 <div class="modal-body">
                     {% csrf_token %}
                     <div class="mb-3">
-                        <label for="submission_file" class="form-label">{% trans "Файл работы" %} *</label>
-                        <input type="file" class="form-control" name="submission_file" id="submission_file" required>
+                        <label for="submission_file" class="form-label">{% trans "Файл работы (необязательно)" %}</label>
+                        <input type="file" class="form-control" name="submission_file" id="submission_file">
                         <div class="form-text">{% trans "Разрешены файлы: PDF, DOC, DOCX, TXT, JPG, PNG, ZIP" %}</div>
                     </div>
                     <div class="mb-3">
@@ -311,7 +311,8 @@
 {% endif %}
 
 <!-- Grade Assignment Modal -->
-{% if user.is_teacher and assignment.lesson.teacher == user %}
+{% if user.is_teacher or user.is_methodist %}
+    {% if not assignment.lesson or assignment.lesson.teacher == user or user.is_methodist %}
 <div class="modal fade" id="gradeModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -349,6 +350,7 @@
         </div>
     </div>
 </div>
+    {% endif %}
 {% endif %}
 
 <!-- Revision Modal -->

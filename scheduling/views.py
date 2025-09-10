@@ -615,3 +615,88 @@ def confirm_lesson_completion(request, lesson_id):
             return JsonResponse({'success': False, 'error': str(e)})
     
     return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+
+
+@login_required
+def methodist_weekly_lessons(request):
+    """Methodist view for tracking weekly teacher lessons with filters"""
+    if not request.user.is_methodist():
+        messages.error(request, "Access denied. Only methodists can view this page.")
+        return redirect("accounts:dashboard")
+    
+    from accounts.models import User
+    from django.db.models import Count, Q
+    from datetime import datetime, timedelta
+    
+    # Get filter parameters
+    week_offset = int(request.GET.get("week", 0))
+    teacher_filter = request.GET.get("teacher", "")
+    status_filter = request.GET.get("status", "")
+    
+    # Calculate the week start (Monday)
+    today = timezone.now().date()
+    current_monday = today - timedelta(days=today.weekday())
+    week_start = current_monday + timedelta(weeks=week_offset)
+    week_end = week_start + timedelta(days=6)
+    
+    # Base queryset for lessons in the selected week
+    lessons = Lesson.objects.filter(
+        start_time__date__range=[week_start, week_end]
+    ).select_related("teacher", "student", "subject").order_by("start_time")
+    
+    # Apply filters
+    if teacher_filter:
+        lessons = lessons.filter(teacher__id=teacher_filter)
+    
+    if status_filter:
+        lessons = lessons.filter(status=status_filter)
+    
+    # Group lessons by teacher for summary
+    teachers_summary = []
+    teachers = User.objects.filter(role=User.UserRole.TEACHER).order_by("first_name", "last_name")
+    
+    for teacher in teachers:
+        teacher_lessons = lessons.filter(teacher=teacher)
+        
+        if teacher_filter and teacher_filter != str(teacher.id):
+            continue  # Skip if teacher filter is active and does not match
+            
+        summary = {
+            "teacher": teacher,
+            "total_lessons": teacher_lessons.count(),
+            "completed_lessons": teacher_lessons.filter(status=Lesson.LessonStatus.COMPLETED).count(),
+            "cancelled_lessons": teacher_lessons.filter(status=Lesson.LessonStatus.CANCELLED).count(),
+            "scheduled_lessons": teacher_lessons.filter(status=Lesson.LessonStatus.SCHEDULED).count(),
+            "lessons": teacher_lessons,
+        }
+        
+        if summary["total_lessons"] > 0:  # Only include teachers with lessons
+            teachers_summary.append(summary)
+    
+    # Get all teachers for filter dropdown
+    all_teachers = User.objects.filter(role=User.UserRole.TEACHER).order_by("first_name", "last_name")
+    
+    # Week navigation
+    prev_week = week_offset - 1
+    next_week = week_offset + 1
+    
+    context = {
+        "teachers_summary": teachers_summary,
+        "all_teachers": all_teachers,
+        "lessons": lessons,
+        "week_start": week_start,
+        "week_end": week_end,
+        "week_offset": week_offset,
+        "prev_week": prev_week,
+        "next_week": next_week,
+        "is_current_week": week_offset == 0,
+        "status_choices": Lesson.LessonStatus.choices,
+        "current_filters": {
+            "teacher": teacher_filter,
+            "status": status_filter,
+        },
+        "today": today,
+    }
+    
+    return render(request, "scheduling/methodist_weekly_lessons.html", context)

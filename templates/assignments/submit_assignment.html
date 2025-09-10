@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Сдача задания" %} - {% trans "Автошкола" %}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="bi bi-upload"></i> {% trans "Сдача задания" %}
+    </h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <a href="{% url 'assignments:assignment_detail' assignment.pk %}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left"></i> {% trans "Назад к заданию" %}
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <!-- Assignment Info -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-journal-text"></i> {{ assignment.title }}
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-2">{{ assignment.description|linebreaks }}</p>
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>{% trans "Срок сдачи" %}:</strong> 
+                            <span class="{% if assignment.is_overdue %}text-danger{% elif assignment.days_until_due <= 2 %}text-warning{% endif %}">
+                                {{ assignment.due_date|date:"d.m.Y H:i" }}
+                            </span>
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>{% trans "Статус" %}:</strong> 
+                            <span class="badge bg-{% if assignment.status == 'completed' %}success{% elif assignment.status == 'submitted' %}info{% elif assignment.status == 'reviewed' %}primary{% elif assignment.is_overdue %}danger{% else %}secondary{% endif %}">
+                                {{ assignment.get_status_display }}
+                            </span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Submission Form -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-upload"></i> {% trans "Загрузить работу" %}
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="submission_file" class="form-label">{% trans "Файл работы (необязательно)" %}</label>
+                        <input type="file" class="form-control" name="submission_file" id="submission_file" 
+                               accept=".pdf,.doc,.docx,.txt,.jpg,.png,.zip">
+                        <div class="form-text">{% trans "Разрешены файлы: PDF, DOC, DOCX, TXT, JPG, PNG, ZIP" %}</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="comments" class="form-label">{% trans "Комментарий (необязательно)" %}</label>
+                        <textarea class="form-control" name="comments" id="comments" rows="4" 
+                                  placeholder="{% trans 'Добавьте комментарий к вашей работе' %}"></textarea>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        {% trans "Вы можете загрузить файл, написать комментарий или сделать и то, и другое. После отправки вы сможете добавить дополнительные файлы к этой работе." %}
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-upload"></i> {% trans "Сдать работу" %}
+                    </button>
+                    <a href="{% url 'assignments:assignment_detail' assignment.pk %}" class="btn btn-secondary">
+                        {% trans "Отмена" %}
+                    </a>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <!-- Progress Card -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-speedometer2"></i> {% trans "Прогресс" %}
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if assignment.is_overdue %}
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        {% trans "Задание просрочено!" %}
+                    </div>
+                {% elif assignment.days_until_due <= 2 %}
+                    <div class="alert alert-warning">
+                        <i class="bi bi-clock"></i>
+                        {% trans "Срок сдачи скоро истечет!" %}
+                    </div>
+                {% endif %}
+                
+                <div class="progress mb-3">
+                    <div class="progress-bar bg-info" role="progressbar" style="width: 50%"></div>
+                </div>
+                
+                <ul class="list-unstyled">
+                    <li class="text-success">
+                        <i class="bi bi-check-circle-fill"></i> {% trans "Задание получено" %}
+                    </li>
+                    <li class="text-muted">
+                        <i class="bi bi-circle"></i> {% trans "Работа сдана" %}
+                    </li>
+                    <li class="text-muted">
+                        <i class="bi bi-circle"></i> {% trans "Работа проверена" %}
+                    </li>
+                    <li class="text-muted">
+                        <i class="bi bi-circle"></i> {% trans "Задание завершено" %}
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
