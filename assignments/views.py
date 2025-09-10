@@ -165,6 +165,49 @@ def mark_all_notifications_read(request):
 
 
 @login_required
+def grade_assignment(request, pk):
+    """Grade assignment - Teachers only"""
+    assignment = get_object_or_404(Assignment, pk=pk)
+    
+    if not request.user.is_teacher() or request.user != assignment.lesson.teacher:
+        messages.error(request, "You can only grade assignments for your own students.")
+        return redirect('assignments:assignment_detail', pk=pk)
+    
+    if request.method == 'POST':
+        grade = request.POST.get('grade')
+        teacher_comments = request.POST.get('teacher_comments', '')
+        
+        if not grade:
+            messages.error(request, "Please select a grade.")
+            return redirect('assignments:assignment_detail', pk=pk)
+        
+        try:
+            grade = int(grade)
+            if grade < 1 or grade > 10:
+                raise ValueError("Grade must be between 1 and 10")
+        except ValueError:
+            messages.error(request, "Please enter a valid grade (1-10).")
+            return redirect('assignments:assignment_detail', pk=pk)
+        
+        # Update assignment
+        assignment.mark_reviewed(teacher_comments, grade)
+        
+        # Create notification for student
+        Notification.objects.create(
+            user=assignment.student,
+            notification_type=Notification.NotificationType.ASSIGNMENT_REVIEWED,
+            title=f"Задание оценено: {assignment.title}",
+            message=f"Ваше задание '{assignment.title}' проверено и оценено. Оценка: {grade}/10",
+            assignment=assignment
+        )
+        
+        messages.success(request, f"Assignment graded successfully! Grade: {grade}/10")
+        return redirect('assignments:assignment_detail', pk=pk)
+    
+    return redirect('assignments:assignment_detail', pk=pk)
+
+
+@login_required
 def get_notifications_api(request):
     """API endpoint to get user notifications"""
     notifications = Notification.objects.filter(user=request.user).order_by('-sent_at')
