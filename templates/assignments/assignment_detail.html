@@ -122,11 +122,11 @@
                     {% for submission in submissions %}
                     <div class="submission-item border-bottom pb-3 mb-3">
                         <div class="d-flex justify-content-between align-items-start">
-                            <div>
+                            <div class="flex-grow-1">
                                 <h6 class="mb-1">
-                                    {% trans "Версия" %} {{ submission.version }}
+                                    {% trans "Попытка" %} {{ submission.version }}
                                     {% if submission.is_final %}
-                                        <span class="badge bg-success">{% trans "Финальная" %}</span>
+                                        <span class="badge bg-success">{% trans "Последняя" %}</span>
                                     {% endif %}
                                 </h6>
                                 <small class="text-muted">
@@ -135,11 +135,49 @@
                                 {% if submission.comments %}
                                 <p class="mt-2 mb-2">{{ submission.comments }}</p>
                                 {% endif %}
-                            </div>
-                            <div class="text-end">
-                                <a href="{{ submission.submission_file.url }}" class="btn btn-outline-primary btn-sm" download>
-                                    <i class="bi bi-download"></i> {% trans "Скачать" %}
-                                </a>
+                                
+                                <!-- Files for this submission -->
+                                <div class="mt-2">
+                                    {% if submission.submission_file %}
+                                    <div class="d-flex align-items-center mb-1">
+                                        <i class="bi bi-file-earmark me-2"></i>
+                                        <a href="{{ submission.submission_file.url }}" class="me-2" download>
+                                            {{ submission.submission_file.name|truncatechars:50 }}
+                                        </a>
+                                        <small class="text-muted">({{ submission.file_size|filesizeformat }})</small>
+                                    </div>
+                                    {% endif %}
+                                    
+                                    {% for file in submission.files.all %}
+                                    <div class="d-flex align-items-center mb-1">
+                                        <i class="bi bi-file-earmark me-2"></i>
+                                        <a href="{{ file.file.url }}" class="me-2" download>
+                                            {{ file.original_name|truncatechars:50 }}
+                                        </a>
+                                        <small class="text-muted">({{ file.file_size|filesizeformat }})</small>
+                                        {% if user.is_student and assignment.student == user and submission.is_final %}
+                                        <button class="btn btn-outline-danger btn-sm ms-2" 
+                                                onclick="deleteFile({{ file.id }})" title="{% trans 'Удалить файл' %}">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                    {% endfor %}
+                                    
+                                    {% if not submission.submission_file and not submission.files.all %}
+                                    <small class="text-muted">{% trans "Только комментарий, без файлов" %}</small>
+                                    {% endif %}
+                                </div>
+                                
+                                <!-- Additional file upload for current submission -->
+                                {% if user.is_student and assignment.student == user and submission.is_final and assignment.status != 'completed' %}
+                                <div class="mt-2">
+                                    <button class="btn btn-outline-primary btn-sm" 
+                                            onclick="showFileUpload({{ submission.id }})">
+                                        <i class="bi bi-plus"></i> {% trans "Добавить файлы" %}
+                                    </button>
+                                </div>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
@@ -226,6 +264,9 @@
                 <button class="btn btn-success w-100 mb-2" data-bs-toggle="modal" data-bs-target="#gradeModal">
                     <i class="bi bi-award"></i> {% trans "Оценить работу" %}
                 </button>
+                <button class="btn btn-warning w-100 mb-2" data-bs-toggle="modal" data-bs-target="#revisionModal">
+                    <i class="bi bi-arrow-clockwise"></i> {% trans "Отправить на доработку" %}
+                </button>
             </div>
         </div>
                 {% endif %}
@@ -309,6 +350,131 @@
     </div>
 </div>
 {% endif %}
+
+<!-- Revision Modal -->
+{% if assignment.status in 'submitted,reviewed' %}
+    {% if user.is_teacher or user.is_methodist %}
+        {% if not assignment.lesson or assignment.lesson.teacher == user or user.is_methodist %}
+<div class="modal fade" id="revisionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">{% trans "Отправить на доработку" %}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'assignments:send_for_revision' assignment.pk %}">
+                <div class="modal-body">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="revision_comments" class="form-label">{% trans "Комментарии для ученика" %} *</label>
+                        <textarea class="form-control" id="revision_comments" name="revision_comments" 
+                                  rows="4" required
+                                  placeholder="{% trans 'Укажите, что нужно исправить или доработать...' %}"></textarea>
+                    </div>
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        {% trans "Ученик получит уведомление о необходимости доработки и сможет отправить исправленную версию." %}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{% trans "Отмена" %}</button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="bi bi-arrow-clockwise"></i> {% trans "Отправить на доработку" %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+        {% endif %}
+    {% endif %}
+{% endif %}
+
+<!-- File Upload Modal -->
+<div class="modal fade" id="fileUploadModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">{% trans "Добавить файлы" %}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="upload-submission-id">
+                <div class="mb-3">
+                    <label for="additional_files" class="form-label">{% trans "Выберите файлы" %}</label>
+                    <input class="form-control" type="file" id="additional_files" multiple 
+                           accept=".pdf,.doc,.docx,.txt,.jpg,.png,.zip">
+                    <div class="form-text">{% trans "Можно выбрать несколько файлов. Максимальный размер файла 10MB." %}</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{% trans "Отмена" %}</button>
+                <button type="button" class="btn btn-primary" onclick="uploadFiles()">
+                    <i class="bi bi-upload"></i> {% trans "Загрузить" %}
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function showFileUpload(submissionId) {
+    document.getElementById('upload-submission-id').value = submissionId;
+    new bootstrap.Modal(document.getElementById('fileUploadModal')).show();
+}
+
+function uploadFiles() {
+    const submissionId = document.getElementById('upload-submission-id').value;
+    const fileInput = document.getElementById('additional_files');
+    const files = fileInput.files;
+    
+    if (files.length === 0) {
+        alert('{% trans "Пожалуйста, выберите файлы для загрузки" %}');
+        return;
+    }
+    
+    const formData = new FormData();
+    for (let i = 0; i < files.length; i++) {
+        formData.append('files', files[i]);
+    }
+    
+    fetch(`/assignments/submissions/${submissionId}/upload-files/`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('{% trans "Ошибка загрузки файлов: " %}' + data.error);
+        }
+    });
+}
+
+function deleteFile(fileId) {
+    if (confirm('{% trans "Вы уверены, что хотите удалить этот файл?" %}')) {
+        fetch(`/assignments/files/${fileId}/delete/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('{% trans "Ошибка удаления файла: " %}' + data.error);
+            }
+        });
+    }
+}
+</script>
 
 <style>
 .submission-item:last-child {

@@ -105,6 +105,24 @@ class Assignment(models.Model):
             self.grade = grade
         self.save()
     
+    def send_for_revision(self, teacher_comments=""):
+        """Send assignment back for revision"""
+        self.status = self.AssignmentStatus.NEEDS_REVISION
+        self.reviewed_at = timezone.now()
+        if teacher_comments:
+            self.teacher_comments = teacher_comments
+        self.save()
+    
+    @property
+    def attempt_count(self):
+        """Get number of submission attempts"""
+        return self.submissions.count()
+    
+    @property 
+    def submission_history(self):
+        """Get all submissions ordered by version"""
+        return self.submissions.all().order_by('version')
+    
     def __str__(self):
         return f"{self.title} - {self.student.full_name}"
     
@@ -182,6 +200,43 @@ class AssignmentSubmission(models.Model):
     
     def __str__(self):
         return f"{self.assignment.title} - v{self.version}"
+
+
+class AssignmentFile(models.Model):
+    """
+    Multiple files for assignment submissions
+    """
+    submission = models.ForeignKey(
+        AssignmentSubmission,
+        on_delete=models.CASCADE,
+        related_name='files'
+    )
+    
+    file = models.FileField(
+        upload_to='assignments/submission_files/',
+        validators=[
+            FileExtensionValidator(
+                allowed_extensions=['pdf', 'doc', 'docx', 'txt', 'jpg', 'png', 'zip']
+            )
+        ]
+    )
+    
+    original_name = models.CharField(max_length=255)
+    file_size = models.PositiveIntegerField()
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    
+    def save(self, *args, **kwargs):
+        if self.file:
+            self.file_size = self.file.size
+            if not self.original_name:
+                self.original_name = self.file.name
+        super().save(*args, **kwargs)
+    
+    def __str__(self):
+        return f"{self.original_name}"
+    
+    class Meta:
+        ordering = ['-uploaded_at']
 
 
 class AssignmentTemplate(models.Model):

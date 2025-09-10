@@ -10,6 +10,11 @@ urlpatterns = [
     path('<int:pk>/', views.AssignmentDetailView.as_view(), name='assignment_detail'),
     path('<int:pk>/submit/', views.submit_assignment, name='submit_assignment'),
     path('<int:pk>/grade/', views.grade_assignment, name='grade_assignment'),
+    path('<int:pk>/revise/', views.send_for_revision, name='send_for_revision'),
+    
+    # File management
+    path('submissions/<int:submission_id>/upload-files/', views.upload_assignment_files, name='upload_assignment_files'),
+    path('files/<int:file_id>/delete/', views.delete_assignment_file, name='delete_assignment_file'),
     
     # Notifications
     path('notifications/', views.NotificationListView.as_view(), name='notification_list'),

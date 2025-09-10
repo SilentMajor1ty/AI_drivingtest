@@ -238,3 +238,82 @@ def get_notifications_api(request):
     }
     
     return JsonResponse(data)
+
+
+@login_required
+def send_for_revision(request, pk):
+    """Send assignment for revision - Teachers and Methodists only"""
+    assignment = get_object_or_404(Assignment, pk=pk)
+    
+    # Only teachers or methodists can send for revision
+    if not (request.user.is_teacher() or request.user.is_methodist()):
+        return JsonResponse({'success': False, 'error': 'Permission denied'})
+    
+    # If assignment has a lesson, only that lesson's teacher can send for revision
+    if assignment.lesson and assignment.lesson.teacher != request.user and not request.user.is_methodist():
+        return JsonResponse({'success': False, 'error': 'Permission denied'})
+    
+    if request.method == 'POST':
+        revision_comments = request.POST.get('revision_comments', '')
+        
+        # Send assignment for revision
+        assignment.send_for_revision(revision_comments)
+        
+        # Create notification for student
+        Notification.objects.create(
+            user=assignment.student,
+            notification_type=Notification.NotificationType.ASSIGNMENT_REVIEWED,
+            title=f"Требуется доработка: {assignment.title}",
+            message=f"Ваше задание '{assignment.title}' требует доработки. Комментарии: {revision_comments}",
+            assignment=assignment
+        )
+        
+        messages.success(request, "Assignment sent for revision.")
+        return JsonResponse({'success': True})
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+
+@login_required
+def upload_assignment_files(request, submission_id):
+    """Upload additional files to assignment submission"""
+    from .models import AssignmentFile
+    
+    submission = get_object_or_404(AssignmentSubmission, pk=submission_id)
+    
+    if request.user != submission.assignment.student:
+        return JsonResponse({'success': False, 'error': 'Permission denied'})
+    
+    if request.method == 'POST':
+        uploaded_files = request.FILES.getlist('files')
+        
+        for file in uploaded_files:
+            AssignmentFile.objects.create(
+                submission=submission,
+                file=file,
+                original_name=file.name
+            )
+        
+        return JsonResponse({
+            'success': True, 
+            'message': f'{len(uploaded_files)} files uploaded successfully'
+        })
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+
+@login_required
+def delete_assignment_file(request, file_id):
+    """Delete assignment file"""
+    from .models import AssignmentFile
+    
+    file = get_object_or_404(AssignmentFile, pk=file_id)
+    
+    if request.user != file.submission.assignment.student:
+        return JsonResponse({'success': False, 'error': 'Permission denied'})
+    
+    if request.method == 'POST':
+        file.delete()
+        return JsonResponse({'success': True})
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
