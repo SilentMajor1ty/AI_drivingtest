@@ -5,6 +5,11 @@ from django.views.generic import ListView, CreateView, UpdateView
 from django.urls import reverse_lazy
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+import json
+import pytz
 
 from .models import User, UserProfile
 from .forms import UserCreateForm, UserUpdateForm
@@ -137,6 +142,11 @@ class UserCreateView(LoginRequiredMixin, MethodistRequiredMixin, CreateView):
     template_name = 'accounts/user_form.html'
     success_url = reverse_lazy('accounts:user_list')
     
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['user'] = self.request.user
+        return kwargs
+    
     def form_valid(self, form):
         form.instance.created_by = self.request.user
         response = super().form_valid(form)
@@ -171,3 +181,24 @@ class UserUpdateView(LoginRequiredMixin, UpdateView):
     def form_valid(self, form):
         messages.success(self.request, f'User {self.object.username} updated successfully!')
         return super().form_valid(form)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def set_timezone(request):
+    """Set user timezone based on browser detection"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            timezone_name = data.get('timezone')
+            
+            if timezone_name and timezone_name in pytz.all_timezones:
+                # Store in session for later use
+                request.session['detected_timezone'] = timezone_name
+                return JsonResponse({'status': 'success'})
+            else:
+                return JsonResponse({'status': 'invalid_timezone'})
+        except (json.JSONDecodeError, KeyError):
+            return JsonResponse({'status': 'error'})
+    
+    return JsonResponse({'status': 'method_not_allowed'})

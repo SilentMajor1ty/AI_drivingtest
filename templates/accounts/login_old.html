@@ -70,31 +70,4 @@
         </div>
     </div>
 </div>
-
-<!-- Automatic timezone detection script -->
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Detect user timezone and store it in sessionStorage
-    if (typeof Intl !== 'undefined' && Intl.DateTimeFormat) {
-        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        sessionStorage.setItem('userTimezone', timezone);
-        
-        // Send timezone to server via AJAX for future use
-        if (timezone) {
-            fetch('/set_timezone/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-                },
-                body: JSON.stringify({
-                    timezone: timezone
-                })
-            }).catch(function(error) {
-                console.log('Timezone detection failed:', error);
-            });
-        }
-    }
-});
-</script>
 {% endblock %}
