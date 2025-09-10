@@ -1,5 +1,5 @@
-{% load i18n %}
 {% extends 'base.html' %}
+{% load i18n %}
 
 {% block title %}
     {% if object %}{% trans "Редактировать пользователя" %} - {{ object.full_name }}{% else %}{% trans "Добавить пользователя" %}{% endif %} - {% trans "Автошкола" %}
