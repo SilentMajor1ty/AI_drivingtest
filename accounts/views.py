@@ -8,6 +8,7 @@ from django.core.exceptions import PermissionDenied
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
+from django.db import models
 import json
 import pytz
 
@@ -59,7 +60,7 @@ def dashboard(request):
         ).select_related('student', 'subject')
         
         recent_submissions = Assignment.objects.filter(
-            lesson__teacher=user,
+            models.Q(lesson__teacher=user) | models.Q(created_by=user),
             status=Assignment.AssignmentStatus.SUBMITTED
         ).select_related('student', 'lesson')[:5]
         
