@@ -29,7 +29,7 @@ class AssignmentForm(forms.ModelForm):
     class Meta:
         model = Assignment
         # Removed 'lesson' field to eliminate lesson binding
-        fields = ['title', 'description', 'student', 'assignment_file']
+        fields = ['title', 'description', 'student']
         widgets = {
             'title': forms.TextInput(attrs={
                 'class': 'form-control',
@@ -41,7 +41,6 @@ class AssignmentForm(forms.ModelForm):
                 'placeholder': 'Подробное описание задания (необязательно)'
             }),
             'student': forms.Select(attrs={'class': 'form-select'}),
-            'assignment_file': forms.FileInput(attrs={'class': 'form-control'})
         }
     
     def __init__(self, *args, **kwargs):

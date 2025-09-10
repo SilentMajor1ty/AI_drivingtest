@@ -353,7 +353,7 @@ function submitReschedule() {
     formData.append('new_start_date', newDate);
     formData.append('new_start_time', newTime);
     
-    fetch(`/scheduling/lessons/${lessonId}/reschedule/`, {
+    fetch(`{% url 'scheduling:reschedule_lesson' 0 %}`.replace('0', lessonId), {
         method: 'POST',
         body: formData,
         headers: {
@@ -378,7 +378,7 @@ function submitCancel() {
     const formData = new FormData();
     formData.append('reason', reason);
     
-    fetch(`/scheduling/lessons/${lessonId}/cancel/`, {
+    fetch(`{% url 'scheduling:cancel_lesson' 0 %}`.replace('0', lessonId), {
         method: 'POST',
         body: formData,
         headers: {

@@ -112,8 +112,6 @@
                                        accept=".pdf,.doc,.docx,.txt,.jpg,.png,.zip">
                                 <div class="form-text">{% trans "Можно выбрать несколько файлов. Разрешены: PDF, DOC, DOCX, TXT, JPG, PNG, ZIP" %}</div>
                                 <div id="selected-files-list" class="mt-2"></div>
-                                {{ form.assignment_file }}
-                                <div style="display: none">{{ form.assignment_file }}</div>
                             </div>
                         </div>
                     </div>
@@ -221,9 +219,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (selectedFiles.length > 0) {
             // Create a new FormData and add selected files
             const formData = new FormData(form);
-            
-            // Remove the original file field
-            formData.delete('assignment_file');
             
             // Add selected files
             selectedFiles.forEach((file, index) => {
