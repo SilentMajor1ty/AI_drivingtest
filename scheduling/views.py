@@ -462,3 +462,109 @@ def report_problem(request):
         return JsonResponse({'success': False, 'error': 'Lesson not found'})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
+
+
+@login_required
+def reschedule_lesson(request, lesson_id):
+    """Reschedule lesson - Teachers and Methodists"""
+    lesson = get_object_or_404(Lesson, pk=lesson_id)
+    
+    # Check permissions
+    if not (request.user.is_methodist() or 
+            (request.user.is_teacher() and lesson.teacher == request.user)):
+        return JsonResponse({'success': False, 'error': 'Permission denied'})
+    
+    if request.method == 'POST':
+        try:
+            new_start_date = request.POST.get('new_start_date')
+            new_start_time = request.POST.get('new_start_time')
+            
+            if not new_start_date or not new_start_time:
+                return JsonResponse({'success': False, 'error': 'Date and time are required'})
+            
+            # Parse new datetime
+            new_start_datetime = timezone.datetime.strptime(
+                f"{new_start_date} {new_start_time}", 
+                "%Y-%m-%d %H:%M"
+            )
+            new_start_datetime = timezone.make_aware(new_start_datetime)
+            
+            # Calculate new end time (preserve duration)
+            duration = lesson.end_time - lesson.start_time
+            new_end_datetime = new_start_datetime + duration
+            
+            # Update lesson
+            lesson.start_time = new_start_datetime
+            lesson.end_time = new_end_datetime
+            lesson.status = Lesson.LessonStatus.RESCHEDULED
+            lesson.save()
+            
+            # Create notifications for participants
+            Notification.objects.create(
+                user=lesson.student,
+                notification_type=Notification.NotificationType.LESSON_UPDATED,
+                title=f"Занятие перенесено: {lesson.title}",
+                message=f"Ваше занятие '{lesson.title}' было перенесено на {new_start_datetime.strftime('%d.%m.%Y в %H:%M')}.",
+                lesson=lesson
+            )
+            
+            Notification.objects.create(
+                user=lesson.teacher,
+                notification_type=Notification.NotificationType.LESSON_UPDATED,
+                title=f"Занятие перенесено: {lesson.title}",
+                message=f"Занятие '{lesson.title}' с учеником {lesson.student.full_name} было перенесено на {new_start_datetime.strftime('%d.%m.%Y в %H:%M')}.",
+                lesson=lesson
+            )
+            
+            return JsonResponse({'success': True})
+            
+        except ValueError as e:
+            return JsonResponse({'success': False, 'error': 'Invalid date/time format'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+
+@login_required
+def cancel_lesson(request, lesson_id):
+    """Cancel lesson - Teachers and Methodists"""
+    lesson = get_object_or_404(Lesson, pk=lesson_id)
+    
+    # Check permissions
+    if not (request.user.is_methodist() or 
+            (request.user.is_teacher() and lesson.teacher == request.user)):
+        return JsonResponse({'success': False, 'error': 'Permission denied'})
+    
+    if request.method == 'POST':
+        try:
+            reason = request.POST.get('reason', '')
+            
+            # Update lesson status
+            lesson.status = Lesson.LessonStatus.CANCELLED
+            lesson.save()
+            
+            # Create notifications for participants
+            Notification.objects.create(
+                user=lesson.student,
+                notification_type=Notification.NotificationType.LESSON_UPDATED,
+                title=f"Занятие отменено: {lesson.title}",
+                message=f"Ваше занятие '{lesson.title}' на {lesson.start_time.strftime('%d.%m.%Y в %H:%M')} было отменено." + (f" Причина: {reason}" if reason else ""),
+                lesson=lesson
+            )
+            
+            if lesson.teacher != request.user:  # Don't notify if teacher cancelled it themselves
+                Notification.objects.create(
+                    user=lesson.teacher,
+                    notification_type=Notification.NotificationType.LESSON_UPDATED,
+                    title=f"Занятие отменено: {lesson.title}",
+                    message=f"Занятие '{lesson.title}' с учеником {lesson.student.full_name} на {lesson.start_time.strftime('%d.%m.%Y в %H:%M')} было отменено." + (f" Причина: {reason}" if reason else ""),
+                    lesson=lesson
+                )
+            
+            return JsonResponse({'success': True})
+            
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})

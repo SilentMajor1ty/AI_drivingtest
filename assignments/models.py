@@ -127,11 +127,14 @@ class AssignmentSubmission(models.Model):
     # File submission
     submission_file = models.FileField(
         upload_to='assignments/submissions/',
+        blank=True,
+        null=True,
         validators=[
             FileExtensionValidator(
                 allowed_extensions=['pdf', 'doc', 'docx', 'txt', 'jpg', 'png', 'zip']
             )
-        ]
+        ],
+        help_text="Файл работы (необязательно)"
     )
     
     # Metadata
@@ -140,7 +143,7 @@ class AssignmentSubmission(models.Model):
     
     # Timestamps
     submitted_at = models.DateTimeField(auto_now_add=True)
-    file_size = models.PositiveIntegerField(help_text="File size in bytes")
+    file_size = models.PositiveIntegerField(null=True, blank=True, help_text="File size in bytes")
     
     # Status
     is_final = models.BooleanField(default=True, help_text="Is this the final submission?")
@@ -154,6 +157,8 @@ class AssignmentSubmission(models.Model):
         # Set file size automatically
         if self.submission_file:
             self.file_size = self.submission_file.size
+        else:
+            self.file_size = None
             
         # Auto-increment version number
         if not self.pk:

@@ -301,7 +301,7 @@ function showLessonDetails(lessonId) {
         .then(data => {
             let participantsHtml = '';
             let materialsHtml = '';
-            let durationHtml = '';
+            let materialsHtml = '';
             
             // Role-based participant display
             {% if user.is_student %}
@@ -313,7 +313,6 @@ function showLessonDetails(lessonId) {
                     <p><strong>Преподаватель:</strong> ${data.teacher}</p>
                     <p><strong>Ученик:</strong> ${data.student}</p>
                 `;
-                durationHtml = `<p><strong>Длительность:</strong> ${data.duration} минут</p>`;
             {% endif %}
             
             // Materials section
@@ -368,7 +367,6 @@ function showLessonDetails(lessonId) {
                         <p><strong>Предмет:</strong> ${data.subject}</p>
                         <p><strong>Дата:</strong> ${data.date}</p>
                         <p><strong>Время:</strong> ${data.start_time} - ${data.end_time}</p>
-                        ${durationHtml}
                         <p><strong>Статус:</strong> <span class="badge bg-primary">${data.status}</span></p>
                     </div>
                     <div class="col-md-6">

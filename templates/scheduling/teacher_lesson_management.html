@@ -138,6 +138,18 @@
                                                 <i class="bi bi-camera-video"></i>
                                             </a>
                                         {% endif %}
+                                        {% if lesson.status == 'scheduled' %}
+                                            <button class="btn btn-outline-primary" 
+                                                    onclick="showRescheduleModal({{ lesson.id }}, '{{ lesson.title|escapejs }}')"
+                                                    title="{% trans 'Перенести занятие' %}">
+                                                <i class="bi bi-calendar-event"></i>
+                                            </button>
+                                            <button class="btn btn-outline-danger" 
+                                                    onclick="showCancelModal({{ lesson.id }}, '{{ lesson.title|escapejs }}')"
+                                                    title="{% trans 'Отменить занятие' %}">
+                                                <i class="bi bi-x-circle"></i>
+                                            </button>
+                                        {% endif %}
                                         <a href="{% url 'assignments:assignment_create' %}?lesson={{ lesson.id }}" 
                                            class="btn btn-outline-warning"
                                            title="{% trans 'Создать задание' %}">
@@ -181,6 +193,66 @@
             </div>
             <div class="modal-body" id="lessonDetailsContent">
                 <!-- Content will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reschedule Modal -->
+<div class="modal fade" id="rescheduleModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">{% trans "Перенести занятие" %}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>{% trans "Занятие" %}: <strong id="reschedule-lesson-title"></strong></p>
+                <form id="rescheduleForm">
+                    {% csrf_token %}
+                    <input type="hidden" id="reschedule-lesson-id">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label for="new_start_date" class="form-label">{% trans "Новая дата" %}</label>
+                            <input type="date" class="form-control" id="new_start_date" name="new_start_date" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="new_start_time" class="form-label">{% trans "Новое время" %}</label>
+                            <input type="time" class="form-control" id="new_start_time" name="new_start_time" required>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{% trans "Отмена" %}</button>
+                <button type="button" class="btn btn-primary" onclick="submitReschedule()">{% trans "Перенести" %}</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Cancel Modal -->
+<div class="modal fade" id="cancelModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">{% trans "Отменить занятие" %}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>{% trans "Вы уверены, что хотите отменить занятие" %}: <strong id="cancel-lesson-title"></strong>?</p>
+                <form id="cancelForm">
+                    {% csrf_token %}
+                    <input type="hidden" id="cancel-lesson-id">
+                    <div class="mb-3">
+                        <label for="cancel_reason" class="form-label">{% trans "Причина отмены (необязательно)" %}</label>
+                        <textarea class="form-control" id="cancel_reason" name="reason" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{% trans "Отмена" %}</button>
+                <button type="button" class="btn btn-danger" onclick="submitCancel()">{% trans "Отменить занятие" %}</button>
             </div>
         </div>
     </div>
@@ -273,6 +345,62 @@ function showLessonDetails(lessonId) {
             console.error('Error:', error);
             alert('{% trans "Ошибка при загрузке данных занятия" %}');
         });
+}
+
+function showRescheduleModal(lessonId, lessonTitle) {
+    document.getElementById('reschedule-lesson-id').value = lessonId;
+    document.getElementById('reschedule-lesson-title').textContent = lessonTitle;
+    new bootstrap.Modal(document.getElementById('rescheduleModal')).show();
+}
+
+function showCancelModal(lessonId, lessonTitle) {
+    document.getElementById('cancel-lesson-id').value = lessonId;
+    document.getElementById('cancel-lesson-title').textContent = lessonTitle;
+    new bootstrap.Modal(document.getElementById('cancelModal')).show();
+}
+
+function submitReschedule() {
+    const formData = new FormData(document.getElementById('rescheduleForm'));
+    const lessonId = document.getElementById('reschedule-lesson-id').value;
+    
+    fetch(`/scheduling/lessons/${lessonId}/reschedule/`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('{% trans "Занятие успешно перенесено!" %}');
+            location.reload();
+        } else {
+            alert('{% trans "Ошибка при переносе занятия: " %}' + data.error);
+        }
+    });
+}
+
+function submitCancel() {
+    const formData = new FormData(document.getElementById('cancelForm'));
+    const lessonId = document.getElementById('cancel-lesson-id').value;
+    
+    fetch(`/scheduling/lessons/${lessonId}/cancel/`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('{% trans "Занятие успешно отменено!" %}');
+            location.reload();
+        } else {
+            alert('{% trans "Ошибка при отмене занятия: " %}' + data.error);
+        }
+    });
 }
 </script>
 {% endblock %}

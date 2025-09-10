@@ -6,6 +6,7 @@ from django.urls import reverse_lazy
 from django.contrib import messages
 from django.http import JsonResponse
 from django.utils import timezone
+from django.db import models
 
 from .models import Assignment, AssignmentSubmission, Notification
 from .forms import AssignmentForm, AssignmentSubmissionForm
@@ -22,11 +23,15 @@ class AssignmentListView(LoginRequiredMixin, ListView):
         user = self.request.user
         
         if user.is_student():
-            return Assignment.objects.filter(student=user).select_related('lesson', 'lesson__subject')
+            return Assignment.objects.filter(student=user).select_related('lesson', 'lesson__subject', 'created_by')
         elif user.is_teacher():
-            return Assignment.objects.filter(lesson__teacher=user).select_related('student', 'lesson', 'lesson__subject')
+            # Teachers see assignments for their lessons OR assignments they created
+            teacher_assignments = Assignment.objects.filter(
+                models.Q(lesson__teacher=user) | models.Q(created_by=user)
+            ).select_related('student', 'lesson', 'lesson__subject', 'created_by')
+            return teacher_assignments
         else:  # Methodist
-            return Assignment.objects.all().select_related('student', 'lesson', 'lesson__subject')
+            return Assignment.objects.all().select_related('student', 'lesson', 'lesson__subject', 'created_by')
 
 
 class AssignmentDetailView(LoginRequiredMixin, DetailView):
@@ -41,7 +46,10 @@ class AssignmentDetailView(LoginRequiredMixin, DetailView):
         if user.is_student():
             return Assignment.objects.filter(student=user)
         elif user.is_teacher():
-            return Assignment.objects.filter(lesson__teacher=user)
+            # Teachers can view assignments for their lessons OR assignments they created
+            return Assignment.objects.filter(
+                models.Q(lesson__teacher=user) | models.Q(created_by=user)
+            )
         else:  # Methodist
             return Assignment.objects.all()
     
@@ -95,8 +103,9 @@ def submit_assignment(request, pk):
         submission_file = request.FILES.get('submission_file')
         comments = request.POST.get('comments', '')
         
-        if not submission_file:
-            messages.error(request, "Please select a file to submit.")
+        # File is now optional, but either file or comments must be provided
+        if not submission_file and not comments.strip():
+            messages.error(request, "Please provide either a file or comments for your submission.")
             return redirect('assignments:assignment_detail', pk=pk)
         
         # Create submission
@@ -157,7 +166,14 @@ def grade_assignment(request, pk):
     """Grade assignment - Teachers only"""
     assignment = get_object_or_404(Assignment, pk=pk)
     
-    if not request.user.is_teacher() or request.user != assignment.lesson.teacher:
+    # Only teachers or methodists can grade assignments
+    if not (request.user.is_teacher() or request.user.is_methodist()):
+        messages.error(request, "Only teachers and methodists can grade assignments.")
+        return redirect('assignments:assignment_detail', pk=pk)
+    
+    # If assignment has a lesson, only that lesson's teacher can grade it
+    # Otherwise, any teacher or methodist can grade it
+    if assignment.lesson and assignment.lesson.teacher != request.user and not request.user.is_methodist():
         messages.error(request, "You can only grade assignments for your own students.")
         return redirect('assignments:assignment_detail', pk=pk)
     

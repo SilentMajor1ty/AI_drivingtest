@@ -13,7 +13,7 @@
             <a href="{% url 'assignments:assignment_list' %}" class="btn btn-outline-secondary btn-sm">
                 <i class="bi bi-arrow-left"></i> {% trans "Назад к списку" %}
             </a>
-            {% if user.is_teacher and assignment.lesson.teacher == user %}
+            {% if user.is_teacher or user.is_methodist %}
             <a href="{% url 'assignments:assignment_create' %}" class="btn btn-outline-primary btn-sm">
                 <i class="bi bi-plus"></i> {% trans "Новое задание" %}
             </a>
@@ -34,15 +34,28 @@
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-6">
+                        {% if assignment.lesson %}
                         <p><strong>{% trans "Занятие" %}:</strong> {{ assignment.lesson.title }}</p>
                         <p><strong>{% trans "Предмет" %}:</strong> {{ assignment.lesson.subject.name }}</p>
+                        {% else %}
+                        <p><strong>{% trans "Тип задания" %}:</strong> {% trans "Общее задание" %}</p>
+                        {% endif %}
                         {% if user.is_student %}
-                        <p><strong>{% trans "Преподаватель" %}:</strong> {{ assignment.lesson.teacher.full_name }}</p>
+                            {% if assignment.lesson %}
+                            <p><strong>{% trans "Преподаватель" %}:</strong> {{ assignment.lesson.teacher.full_name }}</p>
+                            {% else %}
+                            <p><strong>{% trans "Создано" %}:</strong> {{ assignment.created_by.full_name }}</p>
+                            {% endif %}
                         {% elif user.is_teacher %}
                         <p><strong>{% trans "Ученик" %}:</strong> {{ assignment.student.full_name }}</p>
                         {% else %}
-                        <p><strong>{% trans "Преподаватель" %}:</strong> {{ assignment.lesson.teacher.full_name }}</p>
+                            {% if assignment.lesson %}
+                            <p><strong>{% trans "Преподаватель" %}:</strong> {{ assignment.lesson.teacher.full_name }}</p>
+                            {% endif %}
                         <p><strong>{% trans "Ученик" %}:</strong> {{ assignment.student.full_name }}</p>
+                        {% if assignment.created_by %}
+                        <p><strong>{% trans "Создано" %}:</strong> {{ assignment.created_by.full_name }}</p>
+                        {% endif %}
                         {% endif %}
                     </div>
                     <div class="col-md-6">
@@ -200,7 +213,9 @@
         </div>
         
         <!-- Teacher Actions -->
-        {% if user.is_teacher and assignment.lesson.teacher == user and assignment.status in 'submitted,reviewed' %}
+        {% if assignment.status in 'submitted,reviewed' %}
+            {% if user.is_teacher or user.is_methodist %}
+                {% if not assignment.lesson or assignment.lesson.teacher == user or user.is_methodist %}
         <div class="card">
             <div class="card-header">
                 <h5 class="card-title mb-0">
@@ -213,6 +228,8 @@
                 </button>
             </div>
         </div>
+                {% endif %}
+            {% endif %}
         {% endif %}
     </div>
 </div>

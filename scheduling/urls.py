@@ -17,6 +17,10 @@ urlpatterns = [
     # Problem reporting
     path('report-problem/', views.report_problem, name='report_problem'),
     
+    # Lesson management
+    path('lessons/<int:lesson_id>/reschedule/', views.reschedule_lesson, name='reschedule_lesson'),
+    path('lessons/<int:lesson_id>/cancel/', views.cancel_lesson, name='cancel_lesson'),
+    
     # Schedule management
     path('schedule/', views.ScheduleView.as_view(), name='schedule'),
     path('teacher-lessons/', views.teacher_lesson_management, name='teacher_lesson_management'),
