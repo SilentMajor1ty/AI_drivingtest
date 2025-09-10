@@ -161,6 +161,54 @@ class Lesson(models.Model):
         verbose_name_plural = 'Lessons'
 
 
+class ProblemReport(models.Model):
+    """
+    Problem reports from students during lessons
+    """
+    
+    class ProblemType(models.TextChoices):
+        CONNECTION = 'connection', 'Проблемы с подключением'
+        AUDIO = 'audio', 'Проблемы со звуком'
+        VIDEO = 'video', 'Проблемы с видео'
+        TECHNICAL = 'technical', 'Технические проблемы'
+        OTHER = 'other', 'Другое'
+    
+    lesson = models.ForeignKey(
+        Lesson, 
+        on_delete=models.CASCADE, 
+        related_name='problem_reports'
+    )
+    reporter = models.ForeignKey(
+        'accounts.User',
+        on_delete=models.CASCADE,
+        related_name='reported_problems'
+    )
+    problem_type = models.CharField(
+        max_length=20,
+        choices=ProblemType.choices,
+        default=ProblemType.OTHER
+    )
+    description = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_resolved = models.BooleanField(default=False)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    resolved_by = models.ForeignKey(
+        'accounts.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='resolved_problems'
+    )
+    
+    def __str__(self):
+        return f"Проблема в занятии {self.lesson.title} от {self.reporter.full_name}"
+    
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Отчет о проблеме'
+        verbose_name_plural = 'Отчеты о проблемах'
+
+
 class LessonTemplate(models.Model):
     """
     Template for recurring lessons to simplify Methodist's work

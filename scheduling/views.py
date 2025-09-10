@@ -6,8 +6,10 @@ from django.urls import reverse_lazy
 from django.contrib import messages
 from django.http import JsonResponse
 from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 
-from .models import Lesson, Subject, Schedule
+from .models import Lesson, Subject, Schedule, ProblemReport
 from .forms import LessonForm
 from assignments.models import Notification
 
@@ -210,3 +212,77 @@ def teacher_schedule(request, teacher_id):
     }
     
     return render(request, 'scheduling/teacher_schedule.html', context)
+
+
+@login_required
+def lesson_details_ajax(request, lesson_id):
+    """AJAX endpoint for lesson details"""
+    lesson = get_object_or_404(Lesson, pk=lesson_id)
+    
+    # Check permissions
+    if request.user.is_student() and lesson.student != request.user:
+        return JsonResponse({'error': 'Permission denied'}, status=403)
+    elif request.user.is_teacher() and lesson.teacher != request.user:
+        return JsonResponse({'error': 'Permission denied'}, status=403)
+    
+    data = {
+        'title': lesson.title,
+        'subject': lesson.subject.name,
+        'date': lesson.start_time.strftime('%d.%m.%Y'),
+        'start_time': lesson.start_time.strftime('%H:%M'),
+        'end_time': lesson.end_time.strftime('%H:%M'),
+        'duration': lesson.duration_minutes,
+        'status': lesson.get_status_display(),
+        'teacher': lesson.teacher.full_name,
+        'student': lesson.student.full_name,
+        'description': lesson.description,
+        'zoom_link': lesson.zoom_link,
+    }
+    
+    return JsonResponse(data)
+
+
+@login_required
+@require_POST
+def report_problem(request):
+    """Handle problem reporting from students"""
+    if not request.user.is_student():
+        return JsonResponse({'success': False, 'error': 'Only students can report problems'})
+    
+    lesson_id = request.POST.get('lesson_id')
+    problem_type = request.POST.get('problem_type')
+    description = request.POST.get('description')
+    
+    if not all([lesson_id, problem_type, description]):
+        return JsonResponse({'success': False, 'error': 'All fields are required'})
+    
+    try:
+        lesson = Lesson.objects.get(id=lesson_id, student=request.user)
+        
+        # Create problem report
+        problem_report = ProblemReport.objects.create(
+            lesson=lesson,
+            reporter=request.user,
+            problem_type=problem_type,
+            description=description
+        )
+        
+        # Notify all methodists
+        from accounts.models import User
+        methodists = User.objects.filter(role=User.UserRole.METHODIST)
+        
+        for methodist in methodists:
+            Notification.objects.create(
+                user=methodist,
+                notification_type=Notification.NotificationType.LESSON_CREATED,
+                title=f"Сообщение о проблеме в занятии",
+                message=f"Ученик {request.user.full_name} сообщил о проблеме в занятии '{lesson.title}': {problem_report.get_problem_type_display()}. Описание: {description}",
+                lesson=lesson
+            )
+        
+        return JsonResponse({'success': True})
+        
+    except Lesson.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Lesson not found'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})

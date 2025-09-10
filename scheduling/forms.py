@@ -69,6 +69,8 @@ class LessonForm(forms.ModelForm):
         start_hour = cleaned_data.get('start_time_hour')
         start_minute = cleaned_data.get('start_time_minute')
         duration_minutes = cleaned_data.get('duration_minutes')
+        teacher = cleaned_data.get('teacher')
+        student = cleaned_data.get('student')
         
         if all([lesson_date, start_hour, start_minute, duration_minutes]):
             # Construct start_time and end_time
@@ -78,9 +80,46 @@ class LessonForm(forms.ModelForm):
             ))
             end_time = start_time + timedelta(minutes=int(duration_minutes))
             
-            # Check if the lesson is in the past
-            if start_time < timezone.now():
-                raise forms.ValidationError("Нельзя назначить занятие на прошедшее время.")
+            # Check if the lesson is in the past with 5-minute buffer
+            current_time = timezone.now()
+            min_allowed_time = current_time + timedelta(minutes=5)
+            if start_time < min_allowed_time:
+                raise forms.ValidationError(
+                    f"Нельзя назначить занятие на прошедшее время. "
+                    f"Минимальное время для назначения: {min_allowed_time.strftime('%H:%M')}"
+                )
+            
+            # Check for 15-minute break between lessons for teacher
+            if teacher:
+                # Check lessons ending before this one
+                previous_lessons = Lesson.objects.filter(
+                    teacher=teacher,
+                    end_time__lte=start_time,
+                    status__in=[Lesson.LessonStatus.SCHEDULED, Lesson.LessonStatus.COMPLETED]
+                ).exclude(pk=self.instance.pk if self.instance else None).order_by('-end_time')
+                
+                if previous_lessons.exists():
+                    last_lesson_end = previous_lessons.first().end_time
+                    if start_time - last_lesson_end < timedelta(minutes=15):
+                        raise forms.ValidationError(
+                            f"Требуется 15-минутный перерыв между занятиями преподавателя. "
+                            f"Предыдущее занятие заканчивается в {last_lesson_end.strftime('%H:%M')}"
+                        )
+                
+                # Check lessons starting after this one
+                next_lessons = Lesson.objects.filter(
+                    teacher=teacher,
+                    start_time__gte=end_time,
+                    status__in=[Lesson.LessonStatus.SCHEDULED, Lesson.LessonStatus.COMPLETED]
+                ).exclude(pk=self.instance.pk if self.instance else None).order_by('start_time')
+                
+                if next_lessons.exists():
+                    next_lesson_start = next_lessons.first().start_time
+                    if next_lesson_start - end_time < timedelta(minutes=15):
+                        raise forms.ValidationError(
+                            f"Требуется 15-минутный перерыв между занятиями преподавателя. "
+                            f"Следующее занятие начинается в {next_lesson_start.strftime('%H:%M')}"
+                        )
             
             cleaned_data['start_time'] = start_time
             cleaned_data['end_time'] = end_time

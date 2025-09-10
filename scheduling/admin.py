@@ -4,7 +4,7 @@ from django.urls import reverse
 from django.utils.safestring import mark_safe
 import logging
 
-from .models import Subject, Lesson, LessonTemplate, Schedule
+from .models import Subject, Lesson, LessonTemplate, Schedule, ProblemReport
 
 logger = logging.getLogger('admin_actions')
 
@@ -79,6 +79,30 @@ class LessonAdmin(admin.ModelAdmin):
             return qs.filter(teacher=request.user)
         elif request.user.is_student():
             return qs.filter(student=request.user)
+        return qs.none()
+
+
+@admin.register(ProblemReport)
+class ProblemReportAdmin(admin.ModelAdmin):
+    list_display = ('lesson', 'reporter', 'problem_type', 'created_at', 'is_resolved')
+    list_filter = ('problem_type', 'is_resolved', 'created_at')
+    search_fields = ('lesson__title', 'reporter__first_name', 'reporter__last_name', 'description')
+    readonly_fields = ('created_at',)
+    
+    fieldsets = (
+        ('Информация о проблеме', {
+            'fields': ('lesson', 'reporter', 'problem_type', 'description', 'created_at')
+        }),
+        ('Решение', {
+            'fields': ('is_resolved', 'resolved_at', 'resolved_by'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.is_superuser or request.user.is_methodist():
+            return qs
         return qs.none()
 
 

@@ -11,6 +11,10 @@ urlpatterns = [
     path('lessons/<int:pk>/', views.LessonDetailView.as_view(), name='lesson_detail'),
     path('lessons/<int:pk>/edit/', views.LessonUpdateView.as_view(), name='lesson_edit'),
     path('lessons/<int:pk>/rate/', views.rate_lesson, name='rate_lesson'),
+    path('lessons/<int:lesson_id>/details/', views.lesson_details_ajax, name='lesson_details_ajax'),
+    
+    # Problem reporting
+    path('report-problem/', views.report_problem, name='report_problem'),
     
     # Schedule management
     path('schedule/', views.ScheduleView.as_view(), name='schedule'),
