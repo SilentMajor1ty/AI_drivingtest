@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
+from django.core.validators import FileExtensionValidator
 from django.utils import timezone
 from datetime import timedelta
 import pytz
@@ -319,3 +320,41 @@ class Schedule(models.Model):
     class Meta:
         ordering = ['teacher', 'day_of_week', 'start_time']
         unique_together = ['teacher', 'day_of_week', 'start_time', 'end_time']
+
+
+class LessonFile(models.Model):
+    """
+    Multiple files for lesson materials
+    """
+    lesson = models.ForeignKey(
+        Lesson,
+        on_delete=models.CASCADE,
+        related_name='lesson_files'
+    )
+    
+    file = models.FileField(
+        upload_to='lesson_files/',
+        validators=[
+            FileExtensionValidator(
+                allowed_extensions=['pdf', 'doc', 'docx', 'txt', 'jpg', 'png', 'zip']
+            )
+        ]
+    )
+    
+    original_name = models.CharField(max_length=255)
+    file_size = models.PositiveIntegerField()
+    is_teacher_material = models.BooleanField(default=False, help_text="Видимо только преподавателю")
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    
+    def save(self, *args, **kwargs):
+        if self.file:
+            self.file_size = self.file.size
+            if not self.original_name:
+                self.original_name = self.file.name
+        super().save(*args, **kwargs)
+    
+    def __str__(self):
+        return f"{self.lesson.title} - {self.original_name}"
+    
+    class Meta:
+        ordering = ['-uploaded_at']

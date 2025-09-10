@@ -58,10 +58,11 @@
                 <form method="post" enctype="multipart/form-data">
                     {% csrf_token %}
                     <div class="mb-3">
-                        <label for="submission_file" class="form-label">{% trans "Файл работы (необязательно)" %}</label>
-                        <input type="file" class="form-control" name="submission_file" id="submission_file" 
+                        <label for="submission_files" class="form-label">{% trans "Файлы работы" %}</label>
+                        <input type="file" class="form-control" name="submission_files" id="submission_files" multiple
                                accept=".pdf,.doc,.docx,.txt,.jpg,.png,.zip">
-                        <div class="form-text">{% trans "Разрешены файлы: PDF, DOC, DOCX, TXT, JPG, PNG, ZIP" %}</div>
+                        <div class="form-text">{% trans "Можно выбрать несколько файлов. Разрешены: PDF, DOC, DOCX, TXT, JPG, PNG, ZIP" %}</div>
+                        <div id="submission-files-list" class="mt-2"></div>
                     </div>
                     <div class="mb-3">
                         <label for="comments" class="form-label">{% trans "Комментарий (необязательно)" %}</label>
@@ -70,7 +71,7 @@
                     </div>
                     <div class="alert alert-info">
                         <i class="bi bi-info-circle me-2"></i>
-                        {% trans "Вы можете загрузить файл, написать комментарий или сделать и то, и другое. После отправки вы сможете добавить дополнительные файлы к этой работе." %}
+                        {% trans "Вы можете загрузить несколько файлов, написать комментарий или сделать и то, и другое. После отправки вы сможете добавить дополнительные файлы к этой работе." %}
                     </div>
                     <button type="submit" class="btn btn-primary">
                         <i class="bi bi-upload"></i> {% trans "Сдать работу" %}
@@ -126,4 +127,136 @@
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle multiple file selection for submissions
+    const submissionFilesInput = document.getElementById('submission_files');
+    const submissionFilesList = document.getElementById('submission-files-list');
+    let selectedSubmissionFiles = [];
+    
+    if (submissionFilesInput) {
+        submissionFilesInput.addEventListener('change', function(e) {
+            const files = Array.from(e.target.files);
+            
+            files.forEach(file => {
+                // Check if file already selected
+                const existingIndex = selectedSubmissionFiles.findIndex(f => f.name === file.name && f.size === file.size);
+                if (existingIndex === -1) {
+                    selectedSubmissionFiles.push(file);
+                }
+            });
+            
+            updateSubmissionFilesList();
+            e.target.value = ''; // Clear input to allow selecting same files again
+        });
+    }
+    
+    function updateSubmissionFilesList() {
+        if (!submissionFilesList) return;
+        
+        submissionFilesList.innerHTML = '';
+        
+        if (selectedSubmissionFiles.length > 0) {
+            const filesContainer = document.createElement('div');
+            filesContainer.className = 'selected-files-container';
+            
+            selectedSubmissionFiles.forEach((file, index) => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'selected-file-item d-flex justify-content-between align-items-center mb-2 p-2 border rounded bg-light';
+                fileItem.innerHTML = `
+                    <div class="file-info">
+                        <i class="bi bi-file-earmark me-2"></i>
+                        <span class="file-name">${file.name}</span>
+                        <small class="text-muted ms-2">(${formatFileSize(file.size)})</small>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeSubmissionFile(${index})">
+                        <i class="bi bi-x"></i>
+                    </button>
+                `;
+                filesContainer.appendChild(fileItem);
+            });
+            
+            submissionFilesList.appendChild(filesContainer);
+        }
+    }
+    
+    window.removeSubmissionFile = function(index) {
+        selectedSubmissionFiles.splice(index, 1);
+        updateSubmissionFilesList();
+    };
+    
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+    
+    // Handle form submission
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(e) {
+        const commentsField = document.getElementById('comments');
+        const hasFiles = selectedSubmissionFiles.length > 0;
+        const hasComments = commentsField && commentsField.value.trim();
+        
+        if (!hasFiles && !hasComments) {
+            alert('{% trans "Пожалуйста, загрузите файлы или добавьте комментарий" %}');
+            e.preventDefault();
+            return;
+        }
+        
+        if (hasFiles) {
+            // Create a new FormData and add selected files
+            const formData = new FormData(form);
+            
+            // Remove the original file field
+            formData.delete('submission_file');
+            
+            // Add selected files
+            selectedSubmissionFiles.forEach((file, index) => {
+                formData.append('submission_files', file);
+            });
+            
+            e.preventDefault();
+            
+            // Submit using fetch
+            fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    window.location.href = "{% url 'assignments:assignment_detail' assignment.pk %}";
+                } else {
+                    return response.text().then(text => {
+                        document.open();
+                        document.write(text);
+                        document.close();
+                    });
+                }
+            });
+        }
+    });
+    
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+});
+</script>
 {% endblock %}

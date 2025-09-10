@@ -120,14 +120,14 @@
                     </div>
                     
                     <div class="mb-3">
-                        <label for="{{ form.teacher_materials.id_for_label }}" class="form-label">
+                        <label for="teacher_materials" class="form-label">
                             <i class="bi bi-file-earmark-arrow-down"></i> {% trans "Материалы для преподавателя" %}
                         </label>
-                        {{ form.teacher_materials }}
-                        <small class="form-text text-muted">{% trans "Файлы, которые будут видны только преподавателю" %}</small>
-                        {% if form.teacher_materials.errors %}
-                            <div class="text-danger small">{{ form.teacher_materials.errors }}</div>
-                        {% endif %}
+                        <input type="file" class="form-control" id="teacher_materials" name="teacher_materials_files" multiple 
+                               accept=".pdf,.doc,.docx,.txt,.jpg,.png,.zip">
+                        <small class="form-text text-muted">{% trans "Можно выбрать несколько файлов. Файлы будут видны только преподавателю." %}</small>
+                        <div id="teacher-materials-list" class="mt-2"></div>
+                        <div style="display: none">{{ form.teacher_materials }}</div>
                     </div>
                     
                     <!-- Display form-wide errors -->
@@ -174,4 +174,126 @@
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle multiple file selection for teacher materials
+    const teacherMaterialsInput = document.getElementById('teacher_materials');
+    const teacherMaterialsList = document.getElementById('teacher-materials-list');
+    let selectedTeacherFiles = [];
+    
+    if (teacherMaterialsInput) {
+        teacherMaterialsInput.addEventListener('change', function(e) {
+            const files = Array.from(e.target.files);
+            
+            files.forEach(file => {
+                // Check if file already selected
+                const existingIndex = selectedTeacherFiles.findIndex(f => f.name === file.name && f.size === file.size);
+                if (existingIndex === -1) {
+                    selectedTeacherFiles.push(file);
+                }
+            });
+            
+            updateTeacherFilesList();
+            e.target.value = ''; // Clear input to allow selecting same files again
+        });
+    }
+    
+    function updateTeacherFilesList() {
+        if (!teacherMaterialsList) return;
+        
+        teacherMaterialsList.innerHTML = '';
+        
+        if (selectedTeacherFiles.length > 0) {
+            const filesContainer = document.createElement('div');
+            filesContainer.className = 'selected-files-container';
+            
+            selectedTeacherFiles.forEach((file, index) => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'selected-file-item d-flex justify-content-between align-items-center mb-2 p-2 border rounded bg-light';
+                fileItem.innerHTML = `
+                    <div class="file-info">
+                        <i class="bi bi-file-earmark me-2"></i>
+                        <span class="file-name">${file.name}</span>
+                        <small class="text-muted ms-2">(${formatFileSize(file.size)})</small>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeTeacherFile(${index})">
+                        <i class="bi bi-x"></i>
+                    </button>
+                `;
+                filesContainer.appendChild(fileItem);
+            });
+            
+            teacherMaterialsList.appendChild(filesContainer);
+        }
+    }
+    
+    window.removeTeacherFile = function(index) {
+        selectedTeacherFiles.splice(index, 1);
+        updateTeacherFilesList();
+    };
+    
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+    
+    // Handle form submission
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(e) {
+        if (selectedTeacherFiles.length > 0) {
+            // Create a new FormData and add selected files
+            const formData = new FormData(form);
+            
+            // Remove the original file field
+            formData.delete('teacher_materials');
+            
+            // Add selected files
+            selectedTeacherFiles.forEach((file, index) => {
+                formData.append('teacher_materials_files', file);
+            });
+            
+            e.preventDefault();
+            
+            // Submit using fetch
+            fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    window.location.href = "{% url 'scheduling:lesson_list' %}";
+                } else {
+                    return response.text().then(text => {
+                        document.open();
+                        document.write(text);
+                        document.close();
+                    });
+                }
+            });
+        }
+    });
+    
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+});
+</script>
 {% endblock %}

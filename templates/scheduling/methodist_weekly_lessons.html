@@ -189,12 +189,13 @@
 </div>
 {% endif %}
 
-<!-- Lessons Details -->
+<!-- Lessons Details - Simplified View -->
 <div class="card">
-    <div class="card-header">
+    <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="card-title mb-0">
-            <i class="bi bi-list-ul"></i> {% trans "Детали занятий" %}
+            <i class="bi bi-list-ul"></i> {% trans "Занятия на неделю" %}
         </h5>
+        <span class="badge bg-secondary">{{ lessons.count }} {% trans "занятий" %}</span>
     </div>
     <div class="card-body">
         {% if lessons %}
@@ -205,8 +206,6 @@
                         <th>{% trans "Дата/Время" %}</th>
                         <th>{% trans "Преподаватель" %}</th>
                         <th>{% trans "Ученик" %}</th>
-                        <th>{% trans "Предмет" %}</th>
-                        <th>{% trans "Тема" %}</th>
                         <th>{% trans "Статус" %}</th>
                         <th>{% trans "Действия" %}</th>
                     </tr>
@@ -220,8 +219,6 @@
                         </td>
                         <td>{{ lesson.teacher.full_name }}</td>
                         <td>{{ lesson.student.full_name }}</td>
-                        <td>{{ lesson.subject.name }}</td>
-                        <td>{{ lesson.title }}</td>
                         <td>
                             <span class="badge bg-{% if lesson.status == 'completed' %}success{% elif lesson.status == 'cancelled' %}danger{% elif lesson.status == 'rescheduled' %}warning{% else %}info{% endif %}">
                                 {{ lesson.get_status_display }}
@@ -317,6 +314,21 @@
 </div>
 
 <script>
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
 function rescheduleLesson(lessonId) {
     document.getElementById('reschedule-lesson-id').value = lessonId;
     new bootstrap.Modal(document.getElementById('rescheduleModal')).show();
@@ -345,7 +357,7 @@ function submitReschedule() {
         method: 'POST',
         body: formData,
         headers: {
-            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            'X-CSRFToken': getCookie('csrftoken'),
         }
     })
     .then(response => response.json())
@@ -370,7 +382,7 @@ function submitCancel() {
         method: 'POST',
         body: formData,
         headers: {
-            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            'X-CSRFToken': getCookie('csrftoken'),
         }
     })
     .then(response => response.json())

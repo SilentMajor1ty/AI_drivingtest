@@ -105,13 +105,15 @@
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="{{ form.assignment_file.id_for_label }}" class="form-label">
+                                <label for="assignment_files" class="form-label">
                                     <i class="bi bi-paperclip"></i> {% trans "Материалы задания" %}
                                 </label>
+                                <input type="file" class="form-control" id="assignment_files" name="assignment_files" multiple 
+                                       accept=".pdf,.doc,.docx,.txt,.jpg,.png,.zip">
+                                <div class="form-text">{% trans "Можно выбрать несколько файлов. Разрешены: PDF, DOC, DOCX, TXT, JPG, PNG, ZIP" %}</div>
+                                <div id="selected-files-list" class="mt-2"></div>
                                 {{ form.assignment_file }}
-                                {% if form.assignment_file.help_text %}
-                                <div class="form-text">{{ form.assignment_file.help_text }}</div>
-                                {% endif %}
+                                <div style="display: none">{{ form.assignment_file }}</div>
                             </div>
                         </div>
                     </div>
@@ -146,6 +148,125 @@ document.addEventListener('DOMContentLoaded', function() {
     const titleInput = document.getElementById('{{ form.title.id_for_label }}');
     if (titleInput) {
         titleInput.focus();
+    }
+    
+    // Handle multiple file selection
+    const fileInput = document.getElementById('assignment_files');
+    const filesList = document.getElementById('selected-files-list');
+    let selectedFiles = [];
+    
+    fileInput.addEventListener('change', function(e) {
+        const files = Array.from(e.target.files);
+        
+        files.forEach(file => {
+            // Check if file already selected
+            const existingIndex = selectedFiles.findIndex(f => f.name === file.name && f.size === file.size);
+            if (existingIndex === -1) {
+                selectedFiles.push(file);
+                addFileToList(file);
+            }
+        });
+        
+        updateFilesList();
+        e.target.value = ''; // Clear input to allow selecting same files again
+    });
+    
+    function addFileToList(file) {
+        updateFilesList();
+    }
+    
+    function updateFilesList() {
+        filesList.innerHTML = '';
+        
+        if (selectedFiles.length > 0) {
+            const filesContainer = document.createElement('div');
+            filesContainer.className = 'selected-files-container';
+            
+            selectedFiles.forEach((file, index) => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'selected-file-item d-flex justify-content-between align-items-center mb-2 p-2 border rounded bg-light';
+                fileItem.innerHTML = `
+                    <div class="file-info">
+                        <i class="bi bi-file-earmark me-2"></i>
+                        <span class="file-name">${file.name}</span>
+                        <small class="text-muted ms-2">(${formatFileSize(file.size)})</small>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeFile(${index})">
+                        <i class="bi bi-x"></i>
+                    </button>
+                `;
+                filesContainer.appendChild(fileItem);
+            });
+            
+            filesList.appendChild(filesContainer);
+        }
+    }
+    
+    window.removeFile = function(index) {
+        selectedFiles.splice(index, 1);
+        updateFilesList();
+    };
+    
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+    
+    // Handle form submission
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(e) {
+        if (selectedFiles.length > 0) {
+            // Create a new FormData and add selected files
+            const formData = new FormData(form);
+            
+            // Remove the original file field
+            formData.delete('assignment_file');
+            
+            // Add selected files
+            selectedFiles.forEach((file, index) => {
+                formData.append('assignment_files', file);
+            });
+            
+            e.preventDefault();
+            
+            // Submit using fetch
+            fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    window.location.href = "{% url 'assignments:assignment_list' %}";
+                } else {
+                    return response.text().then(text => {
+                        document.open();
+                        document.write(text);
+                        document.close();
+                    });
+                }
+            });
+        }
+    });
+    
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
     }
 });
 </script>

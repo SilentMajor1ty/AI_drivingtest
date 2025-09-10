@@ -115,6 +115,26 @@ class AssignmentCreateView(LoginRequiredMixin, CreateView):
         form.instance.created_by = self.request.user
         response = super().form_valid(form)
         
+        # Handle multiple file uploads
+        assignment_files = self.request.FILES.getlist('assignment_files')
+        if assignment_files:
+            from .models import AssignmentSubmission, AssignmentFile
+            
+            # Create a default submission for the assignment materials
+            submission = AssignmentSubmission.objects.create(
+                assignment=self.object,
+                comments="Assignment materials",
+                is_final=False  # This is not a student submission
+            )
+            
+            # Add all uploaded files
+            for file in assignment_files:
+                AssignmentFile.objects.create(
+                    submission=submission,
+                    file=file,
+                    original_name=file.name
+                )
+        
         # Create notification for student
         assignment = self.object
         Notification.objects.create(
@@ -139,20 +159,29 @@ def submit_assignment(request, pk):
         return redirect('assignments:assignment_detail', pk=pk)
     
     if request.method == 'POST':
-        submission_file = request.FILES.get('submission_file')
+        submission_files = request.FILES.getlist('submission_files')
         comments = request.POST.get('comments', '')
         
-        # File is now optional, but either file or comments must be provided
-        if not submission_file and not comments.strip():
-            messages.error(request, "Please provide either a file or comments for your submission.")
+        # Either files or comments must be provided
+        if not submission_files and not comments.strip():
+            messages.error(request, "Please provide either files or comments for your submission.")
             return redirect('assignments:assignment_detail', pk=pk)
         
         # Create submission
         submission = AssignmentSubmission.objects.create(
             assignment=assignment,
-            submission_file=submission_file,
             comments=comments
         )
+        
+        # Handle multiple files
+        if submission_files:
+            from .models import AssignmentFile
+            for file in submission_files:
+                AssignmentFile.objects.create(
+                    submission=submission,
+                    file=file,
+                    original_name=file.name
+                )
         
         # Create notification for teacher (if lesson has a teacher)
         if assignment.lesson and assignment.lesson.teacher:

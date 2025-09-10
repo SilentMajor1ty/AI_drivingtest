@@ -6,7 +6,7 @@ from django.urls import reverse_lazy
 from django.contrib import messages
 from django.http import JsonResponse
 from django.utils import timezone
-from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.views.decorators.http import require_POST
 import json
 from datetime import datetime, timedelta
@@ -174,6 +174,20 @@ class LessonCreateView(LoginRequiredMixin, CreateView):
     def form_valid(self, form):
         form.instance.created_by = self.request.user
         response = super().form_valid(form)
+        
+        # Handle multiple file uploads for teacher materials
+        teacher_materials_files = self.request.FILES.getlist('teacher_materials_files')
+        if teacher_materials_files:
+            from .models import LessonFile
+            
+            # Add all uploaded files
+            for file in teacher_materials_files:
+                LessonFile.objects.create(
+                    lesson=self.object,
+                    file=file,
+                    original_name=file.name,
+                    is_teacher_material=True
+                )
         
         # Create notifications for teacher and student
         lesson = self.object
@@ -619,6 +633,7 @@ def confirm_lesson_completion(request, lesson_id):
 
 
 @login_required
+@ensure_csrf_cookie
 def methodist_weekly_lessons(request):
     """Methodist view for tracking weekly teacher lessons with filters"""
     if not request.user.is_methodist():
