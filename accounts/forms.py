@@ -3,14 +3,20 @@ from django.contrib.auth.forms import UserCreationForm, UserChangeForm
 from .models import User
 
 
-class UserCreateForm(UserCreationForm):
+class UserCreateForm(forms.ModelForm):
     """Form for creating new users"""
+    
+    password = forms.CharField(
+        widget=forms.PasswordInput(attrs={'class': 'form-control'}),
+        label='Пароль',
+        help_text='Минимум 8 символов'
+    )
     
     class Meta:
         model = User
         fields = (
             'username', 'email', 'first_name', 'last_name', 'middle_name',
-            'role', 'phone'
+            'role'
         )
         widgets = {
             'username': forms.TextInput(attrs={'class': 'form-control'}),
@@ -19,14 +25,11 @@ class UserCreateForm(UserCreationForm):
             'last_name': forms.TextInput(attrs={'class': 'form-control'}),
             'middle_name': forms.TextInput(attrs={'class': 'form-control'}),
             'role': forms.Select(attrs={'class': 'form-select'}),
-            'phone': forms.TextInput(attrs={'class': 'form-control'}),
         }
     
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
-        self.fields['password1'].widget.attrs.update({'class': 'form-control'})
-        self.fields['password2'].widget.attrs.update({'class': 'form-control'})
         
         # Restrict role choices for Methodist users - they cannot create other Methodists
         if user and user.is_methodist():
@@ -34,6 +37,13 @@ class UserCreateForm(UserCreationForm):
                 (User.UserRole.STUDENT, User.UserRole.STUDENT.label),
                 (User.UserRole.TEACHER, User.UserRole.TEACHER.label),
             ]
+    
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.set_password(self.cleaned_data['password'])
+        if commit:
+            user.save()
+        return user
 
 
 class UserUpdateForm(forms.ModelForm):
@@ -43,7 +53,7 @@ class UserUpdateForm(forms.ModelForm):
         model = User
         fields = (
             'username', 'email', 'first_name', 'last_name', 'middle_name',
-            'role', 'phone', 'is_active'
+            'role', 'is_active'
         )
         widgets = {
             'username': forms.TextInput(attrs={'class': 'form-control'}),
@@ -52,6 +62,5 @@ class UserUpdateForm(forms.ModelForm):
             'last_name': forms.TextInput(attrs={'class': 'form-control'}),
             'middle_name': forms.TextInput(attrs={'class': 'form-control'}),
             'role': forms.Select(attrs={'class': 'form-select'}),
-            'phone': forms.TextInput(attrs={'class': 'form-control'}),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }

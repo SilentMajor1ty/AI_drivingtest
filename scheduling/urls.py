@@ -6,6 +6,7 @@ app_name = 'scheduling'
 urlpatterns = [
     # Calendar and lessons
     path('calendar/', views.calendar_view, name='calendar'),
+    path('api/calendar-lessons/', views.calendar_lessons_api, name='calendar_lessons_api'),
     path('lessons/', views.LessonListView.as_view(), name='lesson_list'),
     path('lessons/create/', views.LessonCreateView.as_view(), name='lesson_create'),
     path('lessons/<int:pk>/', views.LessonDetailView.as_view(), name='lesson_detail'),

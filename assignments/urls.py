@@ -13,4 +13,5 @@ urlpatterns = [
     # Notifications
     path('notifications/', views.NotificationListView.as_view(), name='notification_list'),
     path('notifications/<int:pk>/read/', views.mark_notification_read, name='mark_notification_read'),
+    path('api/notifications/', views.get_notifications_api, name='notifications_api'),
 ]

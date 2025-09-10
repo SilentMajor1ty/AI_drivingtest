@@ -57,6 +57,12 @@ class Lesson(models.Model):
     # Content and materials
     description = models.TextField(blank=True)
     materials = models.FileField(upload_to='lesson_materials/', blank=True, null=True)
+    teacher_materials = models.FileField(
+        upload_to='lesson_teacher_materials/',
+        blank=True,
+        null=True,
+        help_text="Материалы для преподавателя (видны только преподавателю)"
+    )
     zoom_link = models.URLField(blank=True, help_text="Zoom/Meet meeting link")
     
     # Status and tracking

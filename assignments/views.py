@@ -150,3 +150,26 @@ def mark_notification_read(request, pk):
     notification.mark_as_read()
     
     return JsonResponse({'status': 'success'})
+
+
+@login_required
+def get_notifications_api(request):
+    """API endpoint to get user notifications"""
+    notifications = Notification.objects.filter(user=request.user).order_by('-sent_at')[:10]
+    
+    data = {
+        'notifications': [
+            {
+                'id': n.id,
+                'title': n.title,
+                'message': n.message,
+                'is_read': n.is_read,
+                'sent_at': n.sent_at.strftime('%d.%m.%Y %H:%M'),
+                'notification_type': n.notification_type,
+            }
+            for n in notifications
+        ],
+        'unread_count': notifications.filter(is_read=False).count()
+    }
+    
+    return JsonResponse(data)

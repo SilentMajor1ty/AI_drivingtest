@@ -8,6 +8,7 @@ from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
+import json
 
 from .models import Lesson, Subject, Schedule, ProblemReport
 from .forms import LessonForm
@@ -26,12 +27,81 @@ def calendar_view(request):
     else:  # Methodist
         lessons = Lesson.objects.all().select_related('teacher', 'student', 'subject')
     
+    # Convert lessons to JSON for JavaScript
+    lessons_json = []
+    for lesson in lessons:
+        lessons_json.append({
+            'id': lesson.id,
+            'title': lesson.title,
+            'subject': lesson.subject.name,
+            'start_time': lesson.start_time.isoformat(),
+            'end_time': lesson.end_time.isoformat(),
+            'status': lesson.status,
+            'status_display': lesson.get_status_display(),
+            'teacher': lesson.teacher.full_name,
+            'student': lesson.student.full_name,
+            'description': lesson.description,
+            'zoom_link': lesson.zoom_link,
+        })
+    
     context = {
         'lessons': lessons,
+        'lessons_json': json.dumps(lessons_json),
         'user': user,
     }
     
-    return render(request, 'scheduling/calendar.html', context)
+    return render(request, 'scheduling/calendar_new.html', context)
+
+
+@login_required
+def calendar_lessons_api(request):
+    """API endpoint for calendar lessons"""
+    user = request.user
+    year = int(request.GET.get('year', timezone.now().year))
+    month = int(request.GET.get('month', timezone.now().month))
+    
+    # Filter lessons for the requested month
+    start_date = timezone.datetime(year, month, 1)
+    if month == 12:
+        end_date = timezone.datetime(year + 1, 1, 1)
+    else:
+        end_date = timezone.datetime(year, month + 1, 1)
+    
+    if user.is_student():
+        lessons = Lesson.objects.filter(
+            student=user,
+            start_time__gte=start_date,
+            start_time__lt=end_date
+        ).select_related('teacher', 'subject')
+    elif user.is_teacher():
+        lessons = Lesson.objects.filter(
+            teacher=user,
+            start_time__gte=start_date,
+            start_time__lt=end_date
+        ).select_related('student', 'subject')
+    else:  # Methodist
+        lessons = Lesson.objects.filter(
+            start_time__gte=start_date,
+            start_time__lt=end_date
+        ).select_related('teacher', 'student', 'subject')
+    
+    lessons_data = []
+    for lesson in lessons:
+        lessons_data.append({
+            'id': lesson.id,
+            'title': lesson.title,
+            'subject': lesson.subject.name,
+            'start_time': lesson.start_time.isoformat(),
+            'end_time': lesson.end_time.isoformat(),
+            'status': lesson.status,
+            'status_display': lesson.get_status_display(),
+            'teacher': lesson.teacher.full_name,
+            'student': lesson.student.full_name,
+            'description': lesson.description,
+            'zoom_link': lesson.zoom_link,
+        })
+    
+    return JsonResponse({'lessons': lessons_data})
 
 
 class LessonListView(LoginRequiredMixin, ListView):
@@ -238,6 +308,10 @@ def lesson_details_ajax(request, lesson_id):
         'description': lesson.description,
         'zoom_link': lesson.zoom_link,
     }
+    
+    # Add teacher materials if user is teacher
+    if request.user.is_teacher() and lesson.teacher_materials:
+        data['teacher_materials'] = lesson.teacher_materials.url
     
     return JsonResponse(data)
 

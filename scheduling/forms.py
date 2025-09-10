@@ -39,13 +39,14 @@ class LessonForm(forms.ModelForm):
     
     class Meta:
         model = Lesson
-        fields = ['title', 'subject', 'teacher', 'student', 'description', 'zoom_link']
+        fields = ['title', 'subject', 'teacher', 'student', 'description', 'teacher_materials', 'zoom_link']
         widgets = {
             'title': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Название занятия'}),
             'subject': forms.Select(attrs={'class': 'form-select'}),
             'teacher': forms.Select(attrs={'class': 'form-select'}),
             'student': forms.Select(attrs={'class': 'form-select'}),
             'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Описание занятия'}),
+            'teacher_materials': forms.FileInput(attrs={'class': 'form-control'}),
             'zoom_link': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://zoom.us/j/...'})
         }
     
