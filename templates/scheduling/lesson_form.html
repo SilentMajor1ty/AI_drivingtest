@@ -129,7 +129,7 @@
                         <div id="teacher-materials-list" class="mt-2"></div>
                         
                         <!-- Display existing files when editing -->
-                        {% if form.instance.lesson_files.exists %}
+                        {% if form.instance.pk and form.instance.lesson_files.exists %}
                         <div class="mt-3">
                             <h6>{% trans "Загруженные файлы:" %}</h6>
                             {% for file in form.instance.lesson_files.all %}
