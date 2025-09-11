@@ -229,6 +229,21 @@ class LessonUpdateView(LoginRequiredMixin, UpdateView):
     
     def form_valid(self, form):
         response = super().form_valid(form)
+        
+        # Handle multiple file uploads for teacher materials
+        teacher_materials_files = self.request.FILES.getlist('teacher_materials_files')
+        if teacher_materials_files:
+            from .models import LessonFile
+            
+            # Add all uploaded files
+            for file in teacher_materials_files:
+                LessonFile.objects.create(
+                    lesson=self.object,
+                    file=file,
+                    original_name=file.name,
+                    is_teacher_material=True
+                )
+        
         messages.success(self.request, f"Lesson '{self.object.title}' updated successfully!")
         return response
 
@@ -589,15 +604,26 @@ def cancel_lesson(request, lesson_id):
 
 
 @login_required
-def confirm_lesson_completion(request, lesson_id):
-    """Confirm lesson completion by teacher or student"""
-    lesson = get_object_or_404(Lesson, pk=lesson_id)
+@require_POST
+def delete_lesson_file(request, file_id):
+    """Delete a lesson file - Methodist only"""
+    from .models import LessonFile
     
-    # Check permissions
-    if not (request.user == lesson.teacher or request.user == lesson.student):
-        return JsonResponse({'success': False, 'error': 'Permission denied'})
-    
-    # Check if lesson can be confirmed
+    try:
+        file_obj = get_object_or_404(LessonFile, pk=file_id)
+        
+        # Check permissions - only methodist can delete files
+        if not request.user.is_methodist():
+            return JsonResponse({'success': False, 'error': 'Permission denied'})
+        
+        # Delete the file
+        file_obj.file.delete()
+        file_obj.delete()
+        
+        return JsonResponse({'success': True})
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
     if not lesson.can_be_confirmed:
         return JsonResponse({'success': False, 'error': 'Lesson cannot be confirmed yet'})
     
@@ -715,3 +741,60 @@ def methodist_weekly_lessons(request):
     }
     
     return render(request, "scheduling/methodist_weekly_lessons.html", context)
+
+
+@login_required
+def confirm_lesson_completion(request, lesson_id):
+    """Confirm lesson completion by teacher or student"""
+    lesson = get_object_or_404(Lesson, pk=lesson_id)
+    
+    # Check permissions
+    if not (request.user == lesson.teacher or request.user == lesson.student):
+        return JsonResponse({'success': False, 'error': 'Permission denied'})
+    
+    # Check if lesson can be confirmed
+    if not lesson.can_be_confirmed:
+        return JsonResponse({'success': False, 'error': 'Lesson cannot be confirmed yet'})
+    
+    if request.method == 'POST':
+        try:
+            rating = int(request.POST.get('rating', 0))
+            comments = request.POST.get('comments', '')
+            
+            if rating < 1 or rating > 10:
+                return JsonResponse({'success': False, 'error': 'Rating must be between 1 and 10'})
+            
+            if request.user == lesson.teacher:
+                lesson.confirm_completion_by_teacher(rating, comments)
+            else:  # student
+                lesson.confirm_completion_by_student(rating, comments)
+            
+            return JsonResponse({'success': True})
+            
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+
+@login_required
+@require_POST
+def delete_lesson_file(request, file_id):
+    """Delete a lesson file - Methodist only"""
+    from .models import LessonFile
+    
+    try:
+        file_obj = get_object_or_404(LessonFile, pk=file_id)
+        
+        # Check permissions - only methodist can delete files
+        if not request.user.is_methodist():
+            return JsonResponse({'success': False, 'error': 'Permission denied'})
+        
+        # Delete the file
+        file_obj.file.delete()
+        file_obj.delete()
+        
+        return JsonResponse({'success': True})
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})

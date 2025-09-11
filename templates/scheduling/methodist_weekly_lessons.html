@@ -331,12 +331,14 @@ function getCookie(name) {
 
 function rescheduleLesson(lessonId) {
     document.getElementById('reschedule-lesson-id').value = lessonId;
-    new bootstrap.Modal(document.getElementById('rescheduleModal')).show();
+    const modal = new bootstrap.Modal(document.getElementById('rescheduleModal'));
+    modal.show();
 }
 
 function cancelLesson(lessonId) {
     document.getElementById('cancel-lesson-id').value = lessonId;
-    new bootstrap.Modal(document.getElementById('cancelModal')).show();
+    const modal = new bootstrap.Modal(document.getElementById('cancelModal'));
+    modal.show();
 }
 
 function submitReschedule() {
