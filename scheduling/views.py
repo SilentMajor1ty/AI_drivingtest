@@ -173,14 +173,15 @@ class LessonCreateView(LoginRequiredMixin, CreateView):
     
     def form_valid(self, form):
         form.instance.created_by = self.request.user
+        # Save the lesson first to get a primary key
         response = super().form_valid(form)
         
-        # Handle multiple file uploads for teacher materials
+        # Handle multiple file uploads for teacher materials - only after lesson is saved
         teacher_materials_files = self.request.FILES.getlist('teacher_materials_files')
         if teacher_materials_files:
             from .models import LessonFile
             
-            # Add all uploaded files
+            # Add all uploaded files - now self.object has a primary key
             for file in teacher_materials_files:
                 LessonFile.objects.create(
                     lesson=self.object,
@@ -228,14 +229,15 @@ class LessonUpdateView(LoginRequiredMixin, UpdateView):
         return super().dispatch(request, *args, **kwargs)
     
     def form_valid(self, form):
+        # Save the lesson first to ensure primary key exists
         response = super().form_valid(form)
         
-        # Handle multiple file uploads for teacher materials
+        # Handle multiple file uploads for teacher materials - only after lesson is saved
         teacher_materials_files = self.request.FILES.getlist('teacher_materials_files')
         if teacher_materials_files:
             from .models import LessonFile
             
-            # Add all uploaded files
+            # Add all uploaded files - now self.object has a primary key
             for file in teacher_materials_files:
                 LessonFile.objects.create(
                     lesson=self.object,
