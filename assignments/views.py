@@ -95,6 +95,11 @@ class AssignmentDetailView(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['submissions'] = self.object.submissions.all().order_by('-submitted_at')
+        
+        # Get assignment materials from non-final submissions (uploaded during assignment creation)
+        assignment_materials = self.object.submissions.filter(is_final=False).first()
+        context['assignment_materials'] = assignment_materials
+        
         return context
 
 

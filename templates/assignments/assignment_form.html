@@ -240,16 +240,30 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .then(response => {
                 if (response.ok) {
-                    window.location.href = "{% url 'assignments:assignment_list' %}";
+                    return response.text();
                 } else {
-                    return response.text().then(text => {
-                        document.open();
-                        document.write(text);
-                        document.close();
-                    });
+                    throw new Error('Form submission failed');
                 }
+            })
+            .then(html => {
+                // Check if response contains form errors by looking for error indicators
+                if (html.includes('alert-danger') || html.includes('text-danger')) {
+                    // Replace page content with response to show errors
+                    document.open();
+                    document.write(html);
+                    document.close();
+                } else {
+                    // Success - redirect to assignment list
+                    window.location.href = "{% url 'assignments:assignment_list' %}";
+                }
+            })
+            .catch(error => {
+                // Handle fetch errors
+                console.error('Error:', error);
+                alert('{% trans "Произошла ошибка при создании задания. Пожалуйста, попробуйте еще раз." %}');
             });
         }
+        // If no files selected, let form submit normally
     });
     
     function getCookie(name) {

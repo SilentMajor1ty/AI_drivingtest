@@ -231,14 +231,26 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .then(response => {
                 if (response.ok) {
-                    window.location.href = "{% url 'assignments:assignment_detail' assignment.pk %}";
+                    return response.text();
                 } else {
-                    return response.text().then(text => {
-                        document.open();
-                        document.write(text);
-                        document.close();
-                    });
+                    throw new Error('Submission failed');
                 }
+            })
+            .then(html => {
+                // Check if response contains form errors
+                if (html.includes('alert-danger') || html.includes('text-danger')) {
+                    // Replace page content with response to show errors
+                    document.open();
+                    document.write(html);
+                    document.close();
+                } else {
+                    // Success - redirect to assignment detail
+                    window.location.href = "{% url 'assignments:assignment_detail' assignment.pk %}";
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('{% trans "Произошла ошибка при отправке работы. Пожалуйста, попробуйте еще раз." %}');
             });
         }
     });
