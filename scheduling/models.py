@@ -194,11 +194,8 @@ class Lesson(models.Model):
     
     @property
     def can_be_rated(self):
-        """Check if lesson can be rated (completed and time has passed)"""
-        return (
-            self.status == self.LessonStatus.COMPLETED and 
-            timezone.now() > self.end_time
-        )
+        """Check if lesson can be rated (time has passed)"""
+        return timezone.now() > self.end_time
     
     def get_local_start_time(self, user_timezone):
         """Get start time in user's timezone"""

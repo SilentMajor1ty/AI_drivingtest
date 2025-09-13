@@ -586,15 +586,15 @@ function submitLessonCompletion(lessonId, rating = null, comments = '') {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            if (data.is_completed) {
-                alert('Урок успешно завершен и подтвержден!');
-            } else {
-                alert('Ваше подтверждение записано. Ожидается подтверждение от другой стороны.');
-            }
+            alert(data.message || (data.is_completed ? 'Урок успешно завершен и подтвержден!' : 'Ваше подтверждение записано. Ожидается подтверждение от другой стороны.'));
             location.reload();
         } else {
             alert('Ошибка: ' + data.error);
         }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Ошибка при подтверждении урока');
     });
 }
 
