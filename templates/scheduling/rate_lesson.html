@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block title %}
+    {% trans "Оценить урок" %} - {{ lesson.title }} - {% trans "Автошкола" %}
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="bi bi-star"></i> {% trans "Оценить урок" %}
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <!-- Lesson Information -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h6>{% trans "Информация об уроке" %}</h6>
+                            <p><strong>{% trans "Название" %}:</strong> {{ lesson.title }}</p>
+                            <p><strong>{% trans "Предмет" %}:</strong> {{ lesson.subject.name }}</p>
+                            <p><strong>{% trans "Дата" %}:</strong> {{ lesson.start_time|date:"d.m.Y" }}</p>
+                            <p><strong>{% trans "Время" %}:</strong> {{ lesson.start_time|time:"H:i" }} - {{ lesson.end_time|time:"H:i" }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>{% trans "Участники" %}</h6>
+                            <p><strong>{% trans "Преподаватель" %}:</strong> {{ lesson.teacher.full_name }}</p>
+                            <p><strong>{% trans "Ученик" %}:</strong> {{ lesson.student.full_name }}</p>
+                            <p><strong>{% trans "Статус" %}:</strong> <span class="badge bg-success">{{ lesson.get_status_display }}</span></p>
+                        </div>
+                    </div>
+
+                    <!-- Rating Form -->
+                    <form method="post" id="ratingForm">
+                        {% csrf_token %}
+                        
+                        <div class="mb-4">
+                            <label for="rating" class="form-label">
+                                <i class="bi bi-star-fill text-warning"></i> 
+                                {% trans "Ваша оценка урока" %} <span class="text-danger">*</span>
+                            </label>
+                            <div class="rating-stars mb-2">
+                                {% for i in "12345678910" %}
+                                    <input type="radio" name="rating" value="{{ forloop.counter }}" id="star{{ forloop.counter }}" required>
+                                    <label for="star{{ forloop.counter }}" class="star-label">
+                                        <i class="bi bi-star"></i>
+                                    </label>
+                                {% endfor %}
+                            </div>
+                            <div class="form-text">{% trans "Выберите оценку от 1 до 10 звезд" %}</div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="comments" class="form-label">
+                                <i class="bi bi-chat-text"></i> {% trans "Комментарии" %}
+                            </label>
+                            <textarea class="form-control" name="comments" id="comments" rows="4" 
+                                      placeholder="{% trans 'Оставьте свои комментарии об уроке (необязательно)' %}"></textarea>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'scheduling:lesson_detail' lesson.pk %}" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left"></i> {% trans "Назад к уроку" %}
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle"></i> {% trans "Сохранить оценку" %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.rating-stars {
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: flex-end;
+}
+
+.rating-stars input[type="radio"] {
+    display: none;
+}
+
+.star-label {
+    font-size: 1.5rem;
+    color: #ddd;
+    cursor: pointer;
+    transition: color 0.2s;
+    margin-right: 5px;
+}
+
+.star-label:hover,
+.star-label:hover ~ .star-label {
+    color: #ffc107;
+}
+
+.rating-stars input[type="radio"]:checked ~ .star-label {
+    color: #ffc107;
+}
+
+.rating-stars input[type="radio"]:checked + .star-label:hover,
+.rating-stars input[type="radio"]:checked + .star-label:hover ~ .star-label,
+.rating-stars input[type="radio"]:checked ~ .star-label:hover,
+.rating-stars input[type="radio"]:checked ~ .star-label:hover ~ .star-label {
+    color: #ffc107;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle star rating display
+    const stars = document.querySelectorAll('.star-label');
+    const radioInputs = document.querySelectorAll('input[name="rating"]');
+    
+    stars.forEach((star, index) => {
+        star.addEventListener('mouseenter', function() {
+            highlightStars(stars.length - index);
+        });
+        
+        star.addEventListener('mouseleave', function() {
+            resetStars();
+            highlightSelectedStars();
+        });
+    });
+    
+    radioInputs.forEach((input, index) => {
+        input.addEventListener('change', function() {
+            highlightSelectedStars();
+        });
+    });
+    
+    function highlightStars(count) {
+        stars.forEach((star, index) => {
+            if (index >= stars.length - count) {
+                star.style.color = '#ffc107';
+            } else {
+                star.style.color = '#ddd';
+            }
+        });
+    }
+    
+    function resetStars() {
+        stars.forEach(star => {
+            star.style.color = '#ddd';
+        });
+    }
+    
+    function highlightSelectedStars() {
+        const selectedRating = document.querySelector('input[name="rating"]:checked');
+        if (selectedRating) {
+            const rating = parseInt(selectedRating.value);
+            highlightStars(rating);
+        }
+    }
+});
+</script>
+{% endblock %}

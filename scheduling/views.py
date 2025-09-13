@@ -255,31 +255,39 @@ def rate_lesson(request, pk):
     
     # Check permissions and if lesson can be rated
     if not (user == lesson.teacher or user == lesson.student):
-        messages.error(request, "You don't have permission to rate this lesson.")
+        messages.error(request, "У вас нет прав для оценки этого урока.")
         return redirect('scheduling:lesson_detail', pk=pk)
     
     if not lesson.can_be_rated:
-        messages.error(request, "This lesson cannot be rated yet.")
+        messages.error(request, "Этот урок еще нельзя оценить. Подождите окончания урока.")
         return redirect('scheduling:lesson_detail', pk=pk)
     
     if request.method == 'POST':
-        rating = int(request.POST.get('rating', 0))
-        comments = request.POST.get('comments', '')
-        
-        if rating < 1 or rating > 10:
-            messages.error(request, "Rating must be between 1 and 10.")
+        try:
+            rating = int(request.POST.get('rating', 0))
+            comments = request.POST.get('comments', '')
+            
+            if rating < 1 or rating > 10:
+                messages.error(request, "Оценка должна быть от 1 до 10.")
+                return redirect('scheduling:rate_lesson', pk=pk)
+            
+            if user == lesson.teacher:
+                lesson.teacher_rating = rating
+                lesson.teacher_comments = comments
+            else:  # student
+                lesson.student_rating = rating
+                lesson.student_comments = comments
+            
+            lesson.save()
+            messages.success(request, "Ваша оценка сохранена!")
             return redirect('scheduling:lesson_detail', pk=pk)
-        
-        if user == lesson.teacher:
-            lesson.teacher_rating = rating
-            lesson.teacher_comments = comments
-        else:  # student
-            lesson.student_rating = rating
-            lesson.student_comments = comments
-        
-        lesson.save()
-        messages.success(request, "Your rating has been saved!")
-        return redirect('scheduling:lesson_detail', pk=pk)
+            
+        except ValueError:
+            messages.error(request, "Неверный формат оценки.")
+            return redirect('scheduling:rate_lesson', pk=pk)
+        except Exception as e:
+            messages.error(request, f"Ошибка при сохранении оценки: {e}")
+            return redirect('scheduling:rate_lesson', pk=pk)
     
     return render(request, 'scheduling/rate_lesson.html', {'lesson': lesson})
 
@@ -721,18 +729,43 @@ def cancel_lesson(request, lesson_id):
 
 @login_required
 def confirm_lesson_completion(request, lesson_id):
+    """Confirm lesson completion by teacher or student"""
     lesson = get_object_or_404(Lesson, pk=lesson_id)
-    user = request.user
-    if user == lesson.teacher:
-        lesson.teacher_confirmed_completion = True
-    if user == lesson.student:
-        lesson.student_confirmed_completion = True
-    if lesson.teacher_confirmed_completion and lesson.student_confirmed_completion:
-        lesson.status = lesson.LessonStatus.COMPLETED
-        lesson.completion_confirmed_at = timezone.now()
-    lesson.save()
-    messages.success(request, 'Подтверждение сохранено')
-    return redirect('scheduling:lesson_detail', pk=lesson_id)
+    
+    # Check permissions
+    if not (request.user == lesson.teacher or request.user == lesson.student):
+        return JsonResponse({'success': False, 'error': 'Permission denied'})
+    
+    # Check if lesson can be confirmed
+    if not lesson.can_be_confirmed:
+        return JsonResponse({'success': False, 'error': 'Lesson cannot be confirmed yet'})
+    
+    if request.method == 'POST':
+        try:
+            rating = request.POST.get('rating')
+            comments = request.POST.get('comments', '')
+            
+            # Convert rating to int if provided
+            if rating:
+                rating = int(rating)
+                if rating < 1 or rating > 10:
+                    return JsonResponse({'success': False, 'error': 'Rating must be between 1 and 10'})
+            
+            if request.user == lesson.teacher:
+                lesson.confirm_completion_by_teacher(rating, comments)
+            else:  # student
+                lesson.confirm_completion_by_student(rating, comments)
+            
+            return JsonResponse({
+                'success': True,
+                'is_completed': lesson.is_confirmed_by_both,
+                'message': 'Урок успешно завершен и подтвержден!' if lesson.is_confirmed_by_both else 'Ваше подтверждение записано. Ожидается подтверждение от другой стороны.'
+            })
+            
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
 
 
 @login_required

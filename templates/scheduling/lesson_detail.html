@@ -1,42 +1,235 @@
 {% extends 'base.html' %}
+{% load i18n %}
+
+{% block title %}
+    {{ lesson.title }} - {% trans "Урок" %} - {% trans "Автошкола" %}
+{% endblock %}
 
 {% block content %}
-<h2>Lesson Details</h2>
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-book"></i> {{ lesson.title }}</h2>
+        <div>
+            <a href="{% url 'scheduling:lesson_list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> {% trans "Назад к урокам" %}
+            </a>
+            {% if lesson.can_be_rated and user == lesson.student or user == lesson.teacher %}
+                <a href="{% url 'scheduling:rate_lesson' lesson.pk %}" class="btn btn-warning ms-2">
+                    <i class="bi bi-star"></i> {% trans "Оценить урок" %}
+                </a>
+            {% endif %}
+        </div>
+    </div>
 
-<p><strong>Title:</strong> {{ lesson.title }}</p>
-<p><strong>Subject:</strong> {{ lesson.subject.name }}</p>
-<p><strong>Teacher:</strong> {{ lesson.teacher.full_name }}</p>
-<p><strong>Student:</strong> {{ lesson.student.full_name }}</p>
-<p><strong>Start Time:</strong> {{ lesson.start_time }}</p>
-<p><strong>End Time:</strong> {{ lesson.end_time }}</p>
-<p><strong>Description:</strong> {{ lesson.description }}</p>
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">{% trans "Информация об уроке" %}</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>{% trans "Предмет" %}:</strong> {{ lesson.subject.name }}</p>
+                            <p><strong>{% trans "Преподаватель" %}:</strong> {{ lesson.teacher.full_name }}</p>
+                            <p><strong>{% trans "Ученик" %}:</strong> {{ lesson.student.full_name }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>{% trans "Дата" %}:</strong> {{ lesson.start_time|date:"d.m.Y" }}</p>
+                            <p><strong>{% trans "Время" %}:</strong> {{ lesson.start_time|time:"H:i" }} - {{ lesson.end_time|time:"H:i" }}</p>
+                            <p><strong>{% trans "Статус" %}:</strong> 
+                                <span class="badge {% if lesson.status == 'completed' %}bg-success{% elif lesson.status == 'scheduled' %}bg-primary{% else %}bg-warning{% endif %}">
+                                    {{ lesson.get_status_display }}
+                                </span>
+                            </p>
+                        </div>
+                    </div>
+                    
+                    {% if lesson.description %}
+                    <div class="mt-3">
+                        <strong>{% trans "Описание" %}:</strong>
+                        <p>{{ lesson.description }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
 
-<h3>Attached Files</h3>
-<ul>
-    {% for file in lesson_files_all %}
-    <li><a href="{{ file.file.url }}" download>{{ file.original_name }}</a></li>
-    {% empty %}
-    <li>No files attached.</li>
-    {% endfor %}
-</ul>
+            <!-- Lesson Files -->
+            {% if lesson_files_all %}
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5 class="mb-0">{% trans "Материалы урока" %}</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        {% for file in lesson_files_all %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="bi bi-file-earmark"></i>
+                                <a href="{{ file.file.url }}" download class="ms-2">{{ file.original_name }}</a>
+                            </div>
+                            <small class="text-muted">{{ file.uploaded_at|date:"d.m.Y H:i" }}</small>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            {% endif %}
 
-{% if lesson_files_teacher %}
-<h3>Teacher Materials</h3>
-<ul>
-    {% for file in lesson_files_teacher %}
-    <li><a href="{{ file.file.url }}" download>{{ file.original_name }}</a></li>
-    {% endfor %}
-</ul>
+            <!-- Teacher Materials (visible only to teacher) -->
+            {% if lesson_files_teacher and user == lesson.teacher %}
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5 class="mb-0">{% trans "Материалы для преподавателя" %}</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        {% for file in lesson_files_teacher %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="bi bi-file-earmark-lock"></i>
+                                <a href="{{ file.file.url }}" download class="ms-2">{{ file.original_name }}</a>
+                            </div>
+                            <small class="text-muted">{{ file.uploaded_at|date:"d.m.Y H:i" }}</small>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="col-md-4">
+            <!-- Zoom Link Card -->
+            {% if lesson.zoom_link %}
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">{% trans "Подключение к уроку" %}</h5>
+                </div>
+                <div class="card-body text-center">
+                    <a id="joinLessonBtn" class="btn btn-success btn-lg disabled" href="#" 
+                       data-start="{{ lesson.start_time|date:'c' }}" 
+                       data-end="{{ lesson.end_time|date:'c' }}" 
+                       data-link="{{ lesson.zoom_link }}">
+                        <i class="bi bi-camera-video"></i> {% trans "Присоединиться к занятию" %}
+                    </a>
+                    <div id="joinLessonInfo" class="text-muted mt-2" style="font-size:0.9em;"></div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Lesson Status -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">{% trans "Статус урока" %}</h5>
+                </div>
+                <div class="card-body">
+                    {% if lesson.teacher_confirmed_completion and lesson.student_confirmed_completion %}
+                        <div class="alert alert-success">
+                            <i class="bi bi-check-circle-fill"></i> {% trans "Урок завершен и подтвержден" %}
+                        </div>
+                    {% elif lesson.teacher_confirmed_completion or lesson.student_confirmed_completion %}
+                        <div class="alert alert-warning">
+                            <i class="bi bi-clock"></i> {% trans "Ожидается подтверждение" %}
+                        </div>
+                    {% elif lesson.can_be_confirmed %}
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i> {% trans "Урок готов к подтверждению" %}
+                            {% if user == lesson.teacher or user == lesson.student %}
+                                <button class="btn btn-sm btn-primary mt-2" onclick="confirmLessonCompletion({{ lesson.id }}, true)">
+                                    {% trans "Подтвердить с оценкой" %}
+                                </button>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Ratings Display -->
+            {% if lesson.teacher_rating or lesson.student_rating %}
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">{% trans "Оценки" %}</h5>
+                </div>
+                <div class="card-body">
+                    {% if lesson.teacher_rating %}
+                    <div class="mb-2">
+                        <strong>{% trans "Оценка преподавателя" %}:</strong>
+                        <div class="rating-display">
+                            {% for i in "12345678910" %}
+                                <i class="bi {% if forloop.counter <= lesson.teacher_rating %}bi-star-fill text-warning{% else %}bi-star text-muted{% endif %}"></i>
+                            {% endfor %}
+                            <span class="ms-2">{{ lesson.teacher_rating }}/10</span>
+                        </div>
+                        {% if lesson.teacher_comments %}
+                            <small class="text-muted d-block mt-1">{{ lesson.teacher_comments }}</small>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    {% if lesson.student_rating %}
+                    <div class="mb-2">
+                        <strong>{% trans "Оценка ученика" %}:</strong>
+                        <div class="rating-display">
+                            {% for i in "12345678910" %}
+                                <i class="bi {% if forloop.counter <= lesson.student_rating %}bi-star-fill text-warning{% else %}bi-star text-muted{% endif %}"></i>
+                            {% endfor %}
+                            <span class="ms-2">{{ lesson.student_rating }}/10</span>
+                        </div>
+                        {% if lesson.student_comments %}
+                            <small class="text-muted d-block mt-1">{{ lesson.student_comments }}</small>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Lesson Completion Modal -->
+<div class="modal fade" id="lessonCompletionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">{% trans "Подтвердить завершение урока" %}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <input type="hidden" id="completion-lesson-id" value="">
+                    <div class="mb-3">
+                        <label for="lesson-rating" class="form-label">{% trans "Оценка урока (1-10)" %} <span class="text-danger">*</span></label>
+                        <select class="form-select" id="lesson-rating" required>
+                            <option value="">{% trans "Выберите оценку" %}</option>
+                            {% for i in "12345678910" %}
+                                <option value="{{ forloop.counter }}">{{ forloop.counter }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="lesson-comments" class="form-label">{% trans "Комментарии" %}</label>
+                        <textarea class="form-control" id="lesson-comments" rows="3" placeholder="{% trans 'Ваши комментарии об уроке (необязательно)' %}"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{% trans "Отмена" %}</button>
+                <button type="button" class="btn btn-success" onclick="submitLessonCompletionWithRating()">{% trans "Подтвердить" %}</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Problem Report Section for Students -->
+{% if user.is_student %}
+<div id="reportProblemSection"></div>
 {% endif %}
 
-{% if lesson.zoom_link %}
-<div class="mt-3">
-    <a id="joinLessonBtn" class="btn btn-success disabled" href="#" data-start="{{ lesson.start_time|date:'c' }}" data-end="{{ lesson.end_time|date:'c' }}" data-link="{{ lesson.zoom_link }}">
-        <i class="bi bi-camera-video"></i> Присоединиться к занятию
-    </a>
-    <span id="joinLessonInfo" class="text-muted ms-2" style="font-size:0.9em;"></span>
-</div>
 <script>
+// Zoom Link Management
+{% if lesson.zoom_link %}
 (function(){
     function updateJoinBtn(){
         var btn = document.getElementById('joinLessonBtn');
@@ -49,29 +242,79 @@
         if(now >= windowOpen && now <= end){
             btn.classList.remove('disabled');
             btn.setAttribute('href', btn.getAttribute('data-link'));
-            btn.title = 'Присоединиться к занятию';
+            btn.title = '{% trans "Присоединиться к занятию" %}';
             info.textContent = '';
         } else {
             btn.classList.add('disabled');
             btn.removeAttribute('href');
             if(now < windowOpen){
-                btn.title = 'Доступно за 5 минут до начала';
-                info.textContent = 'Кнопка станет активной за 5 минут до начала.';
+                btn.title = '{% trans "Доступно за 5 минут до начала" %}';
+                info.textContent = '{% trans "Кнопка станет активной за 5 минут до начала." %}';
             } else {
-                btn.title = 'Занятие завершено';
-                info.textContent = 'Занятие завершено.';
+                btn.title = '{% trans "Занятие завершено" %}';
+                info.textContent = '{% trans "Занятие завершено." %}';
             }
         }
     }
     updateJoinBtn();
     setInterval(updateJoinBtn, 30000);
 })();
-</script>
 {% endif %}
 
+// Lesson Completion Functions
+function confirmLessonCompletion(lessonId, showRating = false) {
+    if (showRating) {
+        // Show rating modal
+        document.getElementById('completion-lesson-id').value = lessonId;
+        new bootstrap.Modal(document.getElementById('lessonCompletionModal')).show();
+    } else {
+        // Just confirm without rating
+        submitLessonCompletion(lessonId);
+    }
+}
+
+function submitLessonCompletion(lessonId, rating = null, comments = '') {
+    const formData = new FormData();
+    if (rating) formData.append('rating', rating);
+    if (comments) formData.append('comments', comments);
+    
+    fetch(`/scheduling/lessons/${lessonId}/confirm-completion/`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message || (data.is_completed ? '{% trans "Урок успешно завершен и подтвержден!" %}' : '{% trans "Ваше подтверждение записано. Ожидается подтверждение от другой стороны." %}'));
+            location.reload();
+        } else {
+            alert('{% trans "Ошибка" %}: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('{% trans "Ошибка при подтверждении урока" %}');
+    });
+}
+
+function submitLessonCompletionWithRating() {
+    const lessonId = document.getElementById('completion-lesson-id').value;
+    const rating = document.getElementById('lesson-rating').value;
+    const comments = document.getElementById('lesson-comments').value;
+    
+    if (!rating) {
+        alert('{% trans "Пожалуйста, выберите оценку" %}');
+        return;
+    }
+    
+    submitLessonCompletion(lessonId, rating, comments);
+}
+
+// Problem Report for Students
 {% if user.is_student %}
-<div id="reportProblemSection"></div>
-<script>
 (function(){
     // Проверка времени: кнопка доступна если прошло 5 минут от старта
     var start = new Date("{{ lesson.start_time|date:'c' }}");
@@ -81,34 +324,38 @@
     var section = document.getElementById('reportProblemSection');
     if(canReport){
         section.innerHTML = `
-        <button class="btn btn-danger mt-3" id="openReportModal">Пожаловаться на занятие</button>
+        <div class="alert alert-warning mt-3">
+            <button class="btn btn-danger" id="openReportModal">{% trans "Сообщить о проблеме" %}</button>
+        </div>
         <div class="modal fade" id="reportProblemModal" tabindex="-1">
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title">Пожаловаться на занятие</h5>
+                        <h5 class="modal-title">{% trans "Сообщить о проблеме" %}</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
                         <form id="reportProblemForm">
                             <div class="mb-3">
-                                <label for="problemType" class="form-label">Тип проблемы</label>
+                                <label for="problemType" class="form-label">{% trans "Тип проблемы" %}</label>
                                 <select class="form-select" id="problemType" name="problem_type" required>
-                                    <option value="tech">Техническая проблема</option>
-                                    <option value="no_teacher">Учитель не пришёл</option>
-                                    <option value="other">Другое</option>
+                                    <option value="connection">{% trans "Проблемы с подключением" %}</option>
+                                    <option value="audio">{% trans "Проблемы со звуком" %}</option>
+                                    <option value="video">{% trans "Проблемы с видео" %}</option>
+                                    <option value="technical">{% trans "Технические проблемы" %}</option>
+                                    <option value="other">{% trans "Другое" %}</option>
                                 </select>
                             </div>
                             <div class="mb-3">
-                                <label for="problemDesc" class="form-label">Описание</label>
+                                <label for="problemDesc" class="form-label">{% trans "Описание" %}</label>
                                 <textarea class="form-control" id="problemDesc" name="description" rows="3" required></textarea>
                             </div>
                             <input type="hidden" name="lesson_id" value="{{ lesson.id }}">
                             <div class="d-grid">
-                                <button type="submit" class="btn btn-danger">Отправить жалобу</button>
+                                <button type="submit" class="btn btn-danger">{% trans "Отправить" %}</button>
                             </div>
                         </form>
-                        <div id="reportSuccessMsg" class="alert alert-success mt-3 d-none">Жалоба отправлена!</div>
+                        <div id="reportSuccessMsg" class="alert alert-success mt-3 d-none">{% trans "Отчет отправлен!" %}</div>
                         <div id="reportErrorMsg" class="alert alert-danger mt-3 d-none"></div>
                     </div>
                 </div>
@@ -131,19 +378,19 @@
                     document.getElementById('reportSuccessMsg').classList.remove('d-none');
                     document.getElementById('openReportModal').disabled = true;
                 }else{
-                    document.getElementById('reportErrorMsg').textContent = data.error||'Ошибка отправки';
+                    document.getElementById('reportErrorMsg').textContent = data.error||'{% trans "Ошибка отправки" %}';
                     document.getElementById('reportErrorMsg').classList.remove('d-none');
                 }
             }).catch(()=>{
-                document.getElementById('reportErrorMsg').textContent = 'Ошибка отправки';
+                document.getElementById('reportErrorMsg').textContent = '{% trans "Ошибка отправки" %}';
                 document.getElementById('reportErrorMsg').classList.remove('d-none');
             });
         };
     }else{
-        section.innerHTML = `<div class="alert alert-info mt-3">Жалоба доступна после начала занятия.</div>`;
+        section.innerHTML = `<div class="alert alert-info mt-3">{% trans "Отчет о проблемах доступен после начала занятия." %}</div>`;
     }
 })();
-</script>
 {% endif %}
+</script>
 
 {% endblock %}
