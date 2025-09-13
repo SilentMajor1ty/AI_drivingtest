@@ -16,7 +16,8 @@ urlpatterns = [
     
     # Problem reporting
     path('report-problem/', views.report_problem, name='report_problem'),
-    
+    path('methodist/problem-reports/', views.problem_reports, name='problem_reports'),
+
     # Lesson management
     path('lessons/<int:lesson_id>/reschedule/', views.reschedule_lesson, name='reschedule_lesson'),
     path('lessons/<int:lesson_id>/cancel/', views.cancel_lesson, name='cancel_lesson'),
@@ -28,4 +29,9 @@ urlpatterns = [
     path('teacher-lessons/', views.teacher_lesson_management, name='teacher_lesson_management'),
     path('teacher-schedule/<int:teacher_id>/', views.teacher_schedule, name='teacher_schedule'),
     path('methodist/weekly-lessons/', views.methodist_weekly_lessons, name='methodist_weekly_lessons'),
+
+    # NEW: Feedback API and analytics
+    path('api/feedback/pending/', views.feedback_pending, name='feedback_pending'),
+    path('api/feedback/submit/', views.feedback_submit, name='feedback_submit'),
+    path('methodist/feedback-analytics/', views.feedback_analytics, name='feedback_analytics'),
 ]

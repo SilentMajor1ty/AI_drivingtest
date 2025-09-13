@@ -5,6 +5,8 @@ from django.core.validators import FileExtensionValidator
 from django.utils import timezone
 from datetime import timedelta
 import pytz
+from uuid import uuid4
+import os
 
 User = get_user_model()
 
@@ -54,7 +56,10 @@ class Lesson(models.Model):
     # Scheduling
     start_time = models.DateTimeField()
     end_time = models.DateTimeField()
-    
+    # Preserve original scheduling for reporting after first reschedule
+    original_start_time = models.DateTimeField(null=True, blank=True, help_text="Изначальное время начала до переноса")
+    original_end_time = models.DateTimeField(null=True, blank=True, help_text="Изначальное время окончания до переноса")
+
     # Content and materials
     description = models.TextField(blank=True)
     materials = models.FileField(upload_to='lesson_materials/', blank=True, null=True)
@@ -208,6 +213,10 @@ class Lesson(models.Model):
     def __str__(self):
         return f"{self.title} - {self.teacher.full_name} & {self.student.full_name}"
     
+    @property
+    def has_original_time(self):
+        return self.original_start_time is not None
+
     class Meta:
         ordering = ['-start_time']
         verbose_name = 'Lesson'
@@ -322,39 +331,88 @@ class Schedule(models.Model):
         unique_together = ['teacher', 'day_of_week', 'start_time', 'end_time']
 
 
+def get_unique_lesson_file_path(instance, filename):
+    """Generate unique file path for lesson files"""
+    ext = filename.split('.')[-1]
+    unique_filename = f"{uuid4()}.{ext}"
+    return os.path.join('lesson_files', f"{instance.lesson.id}", unique_filename)
+
 class LessonFile(models.Model):
-    """
-    Multiple files for lesson materials
-    """
-    lesson = models.ForeignKey(
-        Lesson,
-        on_delete=models.CASCADE,
-        related_name='lesson_files'
-    )
-    
+    """Model for storing files attached to lessons"""
+    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='lesson_files')
     file = models.FileField(
-        upload_to='lesson_files/',
-        validators=[
-            FileExtensionValidator(
-                allowed_extensions=['pdf', 'doc', 'docx', 'txt', 'jpg', 'png', 'zip']
-            )
-        ]
+        upload_to=get_unique_lesson_file_path,
+        validators=[FileExtensionValidator(allowed_extensions=['pdf', 'doc', 'docx', 'txt', 'jpg', 'png', 'zip'])]
     )
-    
     original_name = models.CharField(max_length=255)
-    file_size = models.PositiveIntegerField()
-    is_teacher_material = models.BooleanField(default=False, help_text="Видимо только преподавателю")
     uploaded_at = models.DateTimeField(auto_now_add=True)
-    
-    def save(self, *args, **kwargs):
-        if self.file:
-            self.file_size = self.file.size
-            if not self.original_name:
-                self.original_name = self.file.name
-        super().save(*args, **kwargs)
+    is_teacher_material = models.BooleanField(default=False)
+    file_size = models.PositiveIntegerField(null=True, blank=True)
     
     def __str__(self):
-        return f"{self.lesson.title} - {self.original_name}"
+        return f"{self.original_name} ({self.lesson.title})"
+
+    def save(self, *args, **kwargs):
+        if not self.original_name and self.file:
+            self.original_name = os.path.basename(self.file.name)
+        if self.file:
+            try:
+                self.file_size = self.file.size
+            except:
+                pass
+        super().save(*args, **kwargs)
     
     class Meta:
         ordering = ['-uploaded_at']
+
+
+# --- New: Lesson feedback per participant ---
+from django.core.validators import MinValueValidator, MaxValueValidator
+
+class LessonFeedback(models.Model):
+    """Отзыв по занятию от участника (ученик или преподаватель)."""
+    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='feedbacks')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='lesson_feedbacks')
+    # Соответствует колонке "teacher" в требовании: хранит, от преподавателя ли отзыв
+    is_teacher = models.BooleanField(db_column='teacher', help_text='Отзыв оставлен преподавателем')
+    rating = models.PositiveIntegerField(validators=[MinValueValidator(1), MaxValueValidator(10)])
+    comment = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def clean(self):
+        # Участник должен быть либо преподавателем, либо учеником этого урока
+        if self.lesson_id and self.user_id:
+            if self.user != self.lesson.teacher and self.user != self.lesson.student:
+                raise ValidationError('Пользователь не является участником данного занятия')
+            # is_teacher должен соответствовать роли в уроке
+            if self.is_teacher and self.user != self.lesson.teacher:
+                raise ValidationError('Флаг преподавателя не соответствует пользователю урока')
+            if not self.is_teacher and self.user != self.lesson.student:
+                raise ValidationError('Флаг ученика не соответствует пользователю урока')
+        super().clean()
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        return super().save(*args, **kwargs)
+
+    def __str__(self):
+        who = 'Teacher' if self.is_teacher else 'Student'
+        return f"{who} feedback {self.rating}/10 for {self.lesson.title} by {self.user.full_name}"
+
+    class Meta:
+        ordering = ['-created_at']
+        unique_together = [('lesson', 'user')]
+        verbose_name = 'Lesson Feedback'
+        verbose_name_plural = 'Lesson Feedbacks'
+
+
+def _auto_complete_elapsed_lessons():
+    """Автоматически помечает прошедшие уроки как завершенные."""
+    from django.utils import timezone
+    from .models import Lesson
+    now = timezone.now()
+    updated = Lesson.objects.filter(
+        status__in=[Lesson.LessonStatus.SCHEDULED, Lesson.LessonStatus.RESCHEDULED],
+        end_time__lt=now
+    ).update(status=Lesson.LessonStatus.COMPLETED)
+    return updated  # Возвращаем количество обновленных уроков для диагностики

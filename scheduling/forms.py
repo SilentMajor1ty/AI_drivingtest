@@ -1,6 +1,6 @@
 from django import forms
 from django.utils import timezone
-from .models import Lesson, Subject
+from .models import Lesson
 from accounts.models import User
 from datetime import datetime, timedelta
 
@@ -32,46 +32,48 @@ class LessonForm(forms.ModelForm):
         widget=forms.Select(attrs={'class': 'form-select'}),
         help_text="Продолжительность занятия"
     )
-    
+
     class Meta:
         model = Lesson
-        # Removed description field
+        # Removed description, materials; keep teacher_materials
         fields = ['title', 'subject', 'teacher', 'student', 'teacher_materials', 'zoom_link']
         widgets = {
             'title': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Название занятия'}),
             'subject': forms.Select(attrs={'class': 'form-select'}),
             'teacher': forms.Select(attrs={'class': 'form-select'}),
             'student': forms.Select(attrs={'class': 'form-select'}),
-            'teacher_materials': forms.FileInput(attrs={'class': 'form-control'}),
-            'zoom_link': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://zoom.us/j/...'})
+            'teacher_materials': forms.ClearableFileInput(attrs={'class': 'form-control'}),
+            'zoom_link': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://zoom.us/j/...', 'required': 'required'})
         }
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Filter teacher and student choices
         self.fields['teacher'].queryset = User.objects.filter(role=User.UserRole.TEACHER)
         self.fields['student'].queryset = User.objects.filter(role=User.UserRole.STUDENT)
-        
+
         # Initialize form with existing lesson data if editing
         if self.instance and self.instance.pk:
             self.fields['lesson_date'].initial = self.instance.start_time.date()
             self.fields['start_time'].initial = self.instance.start_time.time()
             duration = int((self.instance.end_time - self.instance.start_time).total_seconds() / 60)
             self.fields['duration_minutes'].initial = duration
-    
+
+        self.fields['zoom_link'].required = True
+
     def clean(self):
         cleaned_data = super().clean()
         lesson_date = cleaned_data.get('lesson_date')
         start_time = cleaned_data.get('start_time')
         duration_minutes = cleaned_data.get('duration_minutes')
         teacher = cleaned_data.get('teacher')
-        student = cleaned_data.get('student')
-        
+        zoom_link = cleaned_data.get('zoom_link')
         if all([lesson_date, start_time, duration_minutes]):
-            # Construct start_datetime and end_datetime
             start_datetime = timezone.make_aware(datetime.combine(lesson_date, start_time))
             end_datetime = start_datetime + timedelta(minutes=int(duration_minutes))
-            
+            cleaned_data['start_datetime'] = start_datetime
+            cleaned_data['end_datetime'] = end_datetime
+
             # Check if the lesson is in the past with 5-minute buffer
             current_time = timezone.now()
             min_allowed_time = current_time + timedelta(minutes=5)
@@ -81,7 +83,7 @@ class LessonForm(forms.ModelForm):
                     f"Минимальное время для назначения: {min_allowed_time.strftime('%H:%M')}"
                 )
             
-            # Check for 15-minute break between lessons for teacher
+            # Check for overlapping lessons
             if teacher:
                 # Check lessons ending before this one
                 previous_lessons = Lesson.objects.filter(
@@ -112,10 +114,10 @@ class LessonForm(forms.ModelForm):
                             f"Требуется 15-минутный перерыв между занятиями преподавателя. "
                             f"Следующее занятие начинается в {next_lesson_start.strftime('%H:%M')}"
                         )
-            
-            cleaned_data['start_datetime'] = start_datetime
-            cleaned_data['end_datetime'] = end_datetime
-        
+
+        if not zoom_link:
+            raise forms.ValidationError('Ссылка на занятие обязательна.')
+
         return cleaned_data
     
     def save(self, commit=True):
@@ -124,4 +126,6 @@ class LessonForm(forms.ModelForm):
         lesson.end_time = self.cleaned_data['end_datetime']
         if commit:
             lesson.save()
+
+
         return lesson

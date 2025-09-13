@@ -294,6 +294,7 @@ class Notification(models.Model):
         LESSON_UPDATED = 'lesson_updated', 'Lesson Updated'
         LESSON_REMINDER_24H = 'lesson_reminder_24h', '24h Lesson Reminder'
         LESSON_REMINDER_1H = 'lesson_reminder_1h', '1h Lesson Reminder'
+        LESSON_FEEDBACK_REMINDER = 'lesson_feedback_reminder', 'Lesson Feedback Reminder'
         ASSIGNMENT_ASSIGNED = 'assignment_assigned', 'Assignment Assigned'
         ASSIGNMENT_DUE_SOON = 'assignment_due_soon', 'Assignment Due Soon'
         ASSIGNMENT_OVERDUE = 'assignment_overdue', 'Assignment Overdue'

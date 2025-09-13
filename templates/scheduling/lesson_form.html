@@ -1,356 +1,101 @@
 {% extends 'base.html' %}
 {% load i18n %}
 
-{% block title %}{% trans "Запланировать занятие" %} - {% trans "Автошкола" %}{% endblock %}
+{% block title %}{% if object %}{% trans "Редактирование занятия" %}{% else %}{% trans "Создание занятия" %}{% endif %}{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-    <h1 class="h2"><i class="bi bi-calendar-plus"></i> {% trans "Запланировать занятие" %}</h1>
-    <div class="btn-toolbar mb-2 mb-md-0">
-        <a href="{% url 'scheduling:lesson_list' %}" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-arrow-left"></i> {% trans "Назад к занятиям" %}
-        </a>
-    </div>
+<div class="pt-3 pb-2 mb-3 border-bottom">
+  <h1 class="h4 mb-0">
+    {% if object %}{% trans "Редактирование занятия" %}{% else %}{% trans "Создание занятия" %}{% endif %}
+  </h1>
 </div>
 
-<div class="row">
-    <div class="col-md-8">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-calendar-event"></i> {% trans "Детали занятия" %}
-                </h5>
-            </div>
-            <div class="card-body">
-                <form method="post" enctype="multipart/form-data">
-                    {% csrf_token %}
-                    
-                    <div class="mb-3">
-                        <label for="{{ form.title.id_for_label }}" class="form-label">
-                            <i class="bi bi-bookmark"></i> {% trans "Название занятия" %} *
-                        </label>
-                        {{ form.title }}
-                        {% if form.title.errors %}
-                            <div class="text-danger small">{{ form.title.errors }}</div>
-                        {% endif %}
-                    </div>
-                    
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="{{ form.subject.id_for_label }}" class="form-label">
-                                <i class="bi bi-book"></i> {% trans "Предмет" %} *
-                            </label>
-                            {{ form.subject }}
-                            {% if form.subject.errors %}
-                                <div class="text-danger small">{{ form.subject.errors }}</div>
-                            {% endif %}
-                        </div>
-                        <div class="col-md-6">
-                            <label for="{{ form.teacher.id_for_label }}" class="form-label">
-                                <i class="bi bi-person-badge"></i> {% trans "Инструктор" %} *
-                            </label>
-                            {{ form.teacher }}
-                            {% if form.teacher.errors %}
-                                <div class="text-danger small">{{ form.teacher.errors }}</div>
-                            {% endif %}
-                        </div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="{{ form.student.id_for_label }}" class="form-label">
-                            <i class="bi bi-person"></i> {% trans "Ученик" %} *
-                        </label>
-                        {{ form.student }}
-                        {% if form.student.errors %}
-                            <div class="text-danger small">{{ form.student.errors }}</div>
-                        {% endif %}
-                    </div>
-                    
-                    <!-- New improved date/time selection -->
-                    <div class="mb-3">
-                        <label for="{{ form.lesson_date.id_for_label }}" class="form-label">
-                            <i class="bi bi-calendar-date"></i> {% trans "Дата занятия" %} *
-                        </label>
-                        {{ form.lesson_date }}
-                        {% if form.lesson_date.help_text %}
-                            <small class="form-text text-muted">{{ form.lesson_date.help_text }}</small>
-                        {% endif %}
-                        {% if form.lesson_date.errors %}
-                            <div class="text-danger small">{{ form.lesson_date.errors }}</div>
-                        {% endif %}
-                    </div>
-                    
-                    <!-- Single field for lesson start time -->
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="{{ form.start_time.id_for_label }}" class="form-label">
-                                <i class="bi bi-clock"></i> {% trans "Начало занятия" %} *
-                            </label>
-                            {{ form.start_time }}
-                            {% if form.start_time.help_text %}
-                                <small class="form-text text-muted">{{ form.start_time.help_text }}</small>
-                            {% endif %}
-                            {% if form.start_time.errors %}
-                                <div class="text-danger small">{{ form.start_time.errors }}</div>
-                            {% endif %}
-                        </div>
-                        <div class="col-md-6">
-                            <label for="{{ form.duration_minutes.id_for_label }}" class="form-label">
-                                <i class="bi bi-hourglass-split"></i> {% trans "Продолжительность" %} *
-                            </label>
-                            {{ form.duration_minutes }}
-                            {% if form.duration_minutes.help_text %}
-                                <small class="form-text text-muted">{{ form.duration_minutes.help_text }}</small>
-                            {% endif %}
-                            {% if form.duration_minutes.errors %}
-                                <div class="text-danger small">{{ form.duration_minutes.errors }}</div>
-                            {% endif %}
-                        </div>
-                    </div>
+<form method="post" enctype="multipart/form-data" class="mb-5" novalidate>
+  {% csrf_token %}
+  {% if form.non_field_errors %}
+    <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+  {% endif %}
 
-                    
-                    <div class="mb-3">
-                        <label for="{{ form.zoom_link.id_for_label }}" class="form-label">
-                            <i class="bi bi-camera-video"></i> {% trans "Ссылка на видеоконференцию" %}
-                        </label>
-                        {{ form.zoom_link }}
-                        {% if form.zoom_link.errors %}
-                            <div class="text-danger small">{{ form.zoom_link.errors }}</div>
-                        {% endif %}
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="teacher_materials" class="form-label">
-                            <i class="bi bi-file-earmark-arrow-down"></i> {% trans "Материалы для преподавателя" %}
-                        </label>
-                        <input type="file" class="form-control" id="teacher_materials" name="teacher_materials_files" multiple 
-                               accept=".pdf,.doc,.docx,.txt,.jpg,.png,.zip">
-                        <small class="form-text text-muted">{% trans "Можно выбрать несколько файлов. Файлы будут видны только преподавателю." %}</small>
-                        <div id="teacher-materials-list" class="mt-2"></div>
-                        
-                        <!-- Display existing files when editing -->
-                        {% if form.instance.pk and form.instance.lesson_files.exists %}
-                        <div class="mt-3">
-                            <h6>{% trans "Загруженные файлы:" %}</h6>
-                            {% for file in form.instance.lesson_files.all %}
-                            <div class="d-flex align-items-center justify-content-between p-2 mb-1 border rounded bg-light">
-                                <div class="file-info">
-                                    <i class="bi bi-file-earmark me-2"></i>
-                                    <span class="file-name">{{ file.original_name }}</span>
-                                    <small class="text-muted ms-2">({{ file.file_size|filesizeformat }})</small>
-                                </div>
-                                <div>
-                                    <a href="{{ file.file.url }}" class="btn btn-sm btn-outline-primary me-1" download>
-                                        <i class="bi bi-download"></i>
-                                    </a>
-                                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteFile({{ file.id }})">
-                                        <i class="bi bi-x"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            {% endfor %}
-                        </div>
-                        {% endif %}
-                    </div>
-                    
-                    <!-- Display form-wide errors -->
-                    {% if form.non_field_errors %}
-                        <div class="alert alert-danger">
-                            {{ form.non_field_errors }}
-                        </div>
-                    {% endif %}
-                    
-                    <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-calendar-check"></i> {% trans "Запланировать занятие" %}
-                        </button>
-                        <a href="{% url 'scheduling:lesson_list' %}" class="btn btn-secondary">
-                            <i class="bi bi-x-circle"></i> {% trans "Отмена" %}
-                        </a>
-                    </div>
-                </form>
-            </div>
-        </div>
+  <!-- Row 1: Title + Subject -->
+  <div class="row g-3 mb-2">
+    <div class="col-12 col-md-6">
+      <label class="form-label" for="{{ form.title.id_for_label }}">{% trans "Название занятия" %} *</label>
+      {{ form.title }}
+      {% if form.title.errors %}<div class="text-danger small">{{ form.title.errors }}</div>{% endif %}
     </div>
-    
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-info-circle"></i> {% trans "Рекомендации" %}
-                </h5>
-            </div>
-            <div class="card-body">
-                <h6>{% trans "Правила планирования" %}:</h6>
-                <ul class="small">
-                    <li>{% trans "Минимальная продолжительность занятия: 30 минут" %}</li>
-                    <li>{% trans "Недопустимы пересекающиеся занятия для инструкторов или учеников" %}</li>
-                    <li>{% trans "Требуется 15-минутный перерыв между занятиями" %}</li>
-                    <li>{% trans "Время отображается в часовом поясе пользователя" %}</li>
-                </ul>
-                
-                <h6 class="mt-3">{% trans "Обязательные поля" %}:</h6>
-                <p class="small text-muted">
-                    {% trans "Все поля, отмеченные *, обязательны для заполнения при планировании занятия." %}
-                </p>
-            </div>
-        </div>
+    <div class="col-12 col-md-6">
+      <label class="form-label" for="{{ form.subject.id_for_label }}">{% trans "Предмет" %} *</label>
+      {{ form.subject }}
+      {% if form.subject.errors %}<div class="text-danger small">{{ form.subject.errors }}</div>{% endif %}
     </div>
-</div>
+  </div>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Handle multiple file selection for teacher materials
-    const teacherMaterialsInput = document.getElementById('teacher_materials');
-    const teacherMaterialsList = document.getElementById('teacher-materials-list');
-    let selectedTeacherFiles = [];
-    
-    if (teacherMaterialsInput) {
-        teacherMaterialsInput.addEventListener('change', function(e) {
-            const files = Array.from(e.target.files);
-            
-            files.forEach(file => {
-                // Check if file already selected
-                const existingIndex = selectedTeacherFiles.findIndex(f => f.name === file.name && f.size === file.size);
-                if (existingIndex === -1) {
-                    selectedTeacherFiles.push(file);
-                }
-            });
-            
-            updateTeacherFilesList();
-            e.target.value = ''; // Clear input to allow selecting same files again
-        });
-    }
-    
-    function updateTeacherFilesList() {
-        if (!teacherMaterialsList) return;
-        
-        teacherMaterialsList.innerHTML = '';
-        
-        if (selectedTeacherFiles.length > 0) {
-            const filesContainer = document.createElement('div');
-            filesContainer.className = 'selected-files-container';
-            
-            selectedTeacherFiles.forEach((file, index) => {
-                const fileItem = document.createElement('div');
-                fileItem.className = 'selected-file-item d-flex justify-content-between align-items-center mb-2 p-2 border rounded bg-light';
-                fileItem.innerHTML = `
-                    <div class="file-info">
-                        <i class="bi bi-file-earmark me-2"></i>
-                        <span class="file-name">${file.name}</span>
-                        <small class="text-muted ms-2">(${formatFileSize(file.size)})</small>
-                    </div>
-                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeTeacherFile(${index})">
-                        <i class="bi bi-x"></i>
-                    </button>
-                `;
-                filesContainer.appendChild(fileItem);
-            });
-            
-            teacherMaterialsList.appendChild(filesContainer);
-        }
-    }
-    
-    window.removeTeacherFile = function(index) {
-        selectedTeacherFiles.splice(index, 1);
-        updateTeacherFilesList();
-    };
-    
-    function formatFileSize(bytes) {
-        if (bytes === 0) return '0 Bytes';
-        const k = 1024;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-    }
-    
-    // Handle form submission
-    const form = document.querySelector('form');
-    form.addEventListener('submit', function(e) {
-        if (selectedTeacherFiles.length > 0) {
-            // Create a new FormData and add selected files
-            const formData = new FormData(form);
-            
-            // Remove the original file field
-            formData.delete('teacher_materials');
-            
-            // Add selected files
-            selectedTeacherFiles.forEach((file, index) => {
-                formData.append('teacher_materials_files', file);
-            });
-            
-            e.preventDefault();
-            
-            // Submit using fetch
-            fetch(form.action, {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-CSRFToken': getCookie('csrftoken'),
-                }
-            })
-            .then(response => {
-                if (response.ok) {
-                    return response.text();
-                } else {
-                    throw new Error('Form submission failed');
-                }
-            })
-            .then(html => {
-                // Check if response contains form errors by looking for error indicators
-                if (html.includes('alert-danger') || html.includes('text-danger')) {
-                    // Replace page content with response to show errors
-                    document.open();
-                    document.write(html);
-                    document.close();
-                } else {
-                    // Success - redirect to lesson list
-                    window.location.href = "{% url 'scheduling:lesson_list' %}";
-                }
-            })
-            .catch(error => {
-                // Handle fetch errors
-                console.error('Error:', error);
-                alert('{% trans "Произошла ошибка при создании занятия. Пожалуйста, попробуйте еще раз." %}');
-            });
-        }
-        // If no files selected, let form submit normally
-    });
-    
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
-            }
-        }
-        return cookieValue;
-    }
-    
-    // Function to delete existing files
-    window.deleteFile = function(fileId) {
-        if (confirm('{% trans "Вы уверены, что хотите удалить этот файл?" %}')) {
-            fetch(`/scheduling/files/${fileId}/delete/`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': getCookie('csrftoken'),
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    location.reload();
-                } else {
-                    alert('{% trans "Ошибка удаления файла: " %}' + data.error);
-                }
-            });
-        }
-    };
-});
-</script>
+  <!-- Row 2: Teacher + Student -->
+  <div class="row g-3 mb-2">
+    <div class="col-12 col-md-6">
+      <label class="form-label" for="{{ form.teacher.id_for_label }}">{% trans "Преподаватель" %} *</label>
+      {{ form.teacher }}
+      {% if form.teacher.errors %}<div class="text-danger small">{{ form.teacher.errors }}</div>{% endif %}
+    </div>
+    <div class="col-12 col-md-6">
+      <label class="form-label" for="{{ form.student.id_for_label }}">{% trans "Ученик" %} *</label>
+      {{ form.student }}
+      {% if form.student.errors %}<div class="text-danger small">{{ form.student.errors }}</div>{% endif %}
+    </div>
+  </div>
+
+  <!-- Row 3: Date / Time / Duration -->
+  <div class="row g-3 mb-2">
+    <div class="col-12 col-md-4">
+      <label class="form-label" for="{{ form.lesson_date.id_for_label }}">{% trans "Дата" %} *</label>
+      {{ form.lesson_date }}
+      {% if form.lesson_date.errors %}<div class="text-danger small">{{ form.lesson_date.errors }}</div>{% endif %}
+    </div>
+    <div class="col-6 col-md-4">
+      <label class="form-label" for="{{ form.start_time.id_for_label }}">{% trans "Время" %} *</label>
+      {{ form.start_time }}
+      {% if form.start_time.errors %}<div class="text-danger small">{{ form.start_time.errors }}</div>{% endif %}
+    </div>
+    <div class="col-6 col-md-4">
+      <label class="form-label" for="{{ form.duration_minutes.id_for_label }}">{% trans "Длительность" %} *</label>
+      {{ form.duration_minutes }}
+      {% if form.duration_minutes.errors %}<div class="text-danger small">{{ form.duration_minutes.errors }}</div>{% endif %}
+    </div>
+  </div>
+
+  <!-- Row 4: Teacher Materials + Zoom link on same line (materials first) -->
+  <div class="row g-3 mb-4">
+    <div class="col-12 col-md-6 col-lg-5">
+      <label class="form-label" for="{{ form.zoom_link.id_for_label }}">Zoom / Meet</label>
+      {{ form.zoom_link }}
+      {% if form.zoom_link.errors %}<div class="text-danger small">{{ form.zoom_link.errors }}</div>{% endif %}
+    </div>
+  </div>
+
+  <!-- Row 5: Teacher materials on its own line -->
+  <div class="row g-3 mb-4">
+    <div class="col-12 col-md-6 col-lg-5">
+      <label class="form-label" for="{{ form.teacher_materials.id_for_label }}">{% trans "Материалы для преподавателя" %}</label>
+      {{ form.teacher_materials }}
+      {% if form.teacher_materials.errors %}<div class="text-danger small">{{ form.teacher_materials.errors }}</div>{% endif %}
+      <small class="text-muted d-block mt-1">{% trans "Видно только преподавателю и методисту" %}</small>
+      {% if object and object.teacher_materials %}
+        <div class="mt-2">
+          <a class="btn btn-sm btn-outline-secondary" href="{{ object.teacher_materials.url }}" target="_blank" download>
+            <i class="bi bi-download"></i> {% trans "Скачать текущий" %}
+          </a>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="d-flex gap-2">
+    <button type="submit" class="btn btn-primary">
+      <i class="bi bi-save"></i> {% if object %}{% trans "Сохранить" %}{% else %}{% trans "Создать" %}{% endif %}
+    </button>
+    <a href="{% url 'scheduling:lesson_list' %}" class="btn btn-outline-secondary">
+      <i class="bi bi-x-circle"></i> {% trans "Отмена" %}
+    </a>
+  </div>
+</form>
 {% endblock %}

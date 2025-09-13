@@ -1,15 +1,15 @@
+{% load i18n %}{% load static %}
 <!DOCTYPE html>
-{% load i18n %}
 <html lang="{{ LANGUAGE_CODE }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}{% trans "Автошкола" %}{% endblock %}</title>
-    
+    <title>{% block title %}{% trans "Школа" %}{% endblock %}</title>
+
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
-    
+
     <style>
         .sidebar {
             min-height: 100vh;
@@ -102,6 +102,16 @@
             border-radius: 50%;
             margin-left: auto;
         }
+
+        /* Feedback banner */
+        #feedbackBanner {
+            z-index: 1060;
+        }
+        .stars .bi {
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+        .stars .bi-star-fill { color: #f0ad4e; }
     </style>
 </head>
 <body>
@@ -109,7 +119,7 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container-fluid">
             <a class="navbar-brand" href="{% url 'accounts:dashboard' %}">
-                <i class="bi bi-mortarboard"></i> {% trans "Автошкола" %}
+                <i class="bi bi-mortarboard"></i> {% trans "Школа" %}
             </a>
             
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -155,7 +165,10 @@
                         <div class="dropdown-menu dropdown-menu-end notification-dropdown" id="notificationDropdown">
                             <div class="dropdown-header d-flex justify-content-between align-items-center">
                                 <span><i class="bi bi-bell"></i> Уведомления</span>
-                                <a href="{% url 'assignments:notification_list' %}" class="small text-decoration-none">Все</a>
+                                <div class="d-flex gap-2 align-items-center">
+                                    <button type="button" class="btn btn-link p-0 small" onclick="markAllNotificationsRead(event)">Отметить все</button>
+                                    <a href="{% url 'assignments:notification_list' %}" class="small text-decoration-none">Все</a>
+                                </div>
                             </div>
                             <div id="notificationList">
                                 <!-- Notifications will be loaded here -->
@@ -259,6 +272,11 @@
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link" href="{% url 'scheduling:feedback_analytics' %}">
+                                <i class="bi bi-star-half"></i> {% trans "Отзывы по занятиям" %}
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link" href="/admin/">
                                 <i class="bi bi-gear"></i> {% trans "Панель администратора" %}
                             </a>
@@ -290,6 +308,59 @@
         {% endif %}
     </main>
 
+    <!-- Feedback banner (shown when lesson ended >1h ago) -->
+    <div id="feedbackBanner" class="alert alert-info alert-dismissible fade show d-none position-fixed top-0 start-50 translate-middle-x mt-2 shadow" role="alert" style="min-width: 320px;">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-star-half"></i>
+            <span id="feedbackBannerText">Оцените прошедший урок</span>
+        </div>
+        <div class="mt-2 d-flex gap-2 justify-content-end">
+            <button id="feedbackBannerRate" class="btn btn-sm btn-primary">Оценить</button>
+            <button id="feedbackBannerDismiss" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="alert">Позже</button>
+        </div>
+    </div>
+
+    <!-- Feedback modal -->
+    <div class="modal fade" id="lessonFeedbackModal" tabindex="-1" aria-labelledby="lessonFeedbackLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="lessonFeedbackLabel">Оцените занятие</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div id="lessonFeedbackInfo" class="mb-2 text-muted"></div>
+            <input type="hidden" id="feedbackLessonId" value="">
+            <div class="mb-3">
+                <label class="form-label">Ваша оценка</label>
+                <div id="feedbackStars" class="stars">
+                    <!-- 10 stars -->
+                    <i class="bi bi-star" data-value="1"></i>
+                    <i class="bi bi-star" data-value="2"></i>
+                    <i class="bi bi-star" data-value="3"></i>
+                    <i class="bi bi-star" data-value="4"></i>
+                    <i class="bi bi-star" data-value="5"></i>
+                    <i class="bi bi-star" data-value="6"></i>
+                    <i class="bi bi-star" data-value="7"></i>
+                    <i class="bi bi-star" data-value="8"></i>
+                    <i class="bi bi-star" data-value="9"></i>
+                    <i class="bi bi-star" data-value="10"></i>
+                </div>
+                <div class="form-text">1 — плохо, 10 — отлично</div>
+            </div>
+            <div class="mb-3">
+                <label for="feedbackComment" class="form-label">Комментарий (по желанию)</label>
+                <textarea id="feedbackComment" class="form-control" rows="3" placeholder="Что понравилось? Что можно улучшить?"></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" id="feedbackSkipBtn" data-bs-dismiss="modal">Пропустить</button>
+            <button type="button" class="btn btn-primary" id="feedbackSubmitBtn" disabled>Отправить</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
@@ -297,6 +368,14 @@
     <script>
         // Add CSRF token to all AJAX requests
         function getCSRFToken() {
+            // Prefer cookie csrftoken if present
+            const getCookie = (name) => {
+                const value = `; ${document.cookie}`;
+                const parts = value.split(`; ${name}=`);
+                if (parts.length === 2) return parts.pop().split(';').shift();
+            };
+            const cookieToken = getCookie('csrftoken');
+            if (cookieToken) return cookieToken;
             const token = document.querySelector('[name=csrfmiddlewaretoken]');
             return token ? token.value : '';
         }
@@ -323,22 +402,27 @@
                     if (data.notifications.length === 0) {
                         notificationList.innerHTML = '<div class="notification-item text-center text-muted py-3">Нет уведомлений</div>';
                     } else {
-                        notificationList.innerHTML = data.notifications.map(notification => `
-                            <div class="notification-item ${!notification.is_read ? 'notification-unread' : ''}" 
-                                 onclick="markAsRead(${notification.id})">
+                        notificationList.innerHTML = data.notifications.map(n => {
+                            let formatted;
+                            try {
+                                const d = new Date(n.sent_at_utc || n.sent_at);
+                                formatted = isNaN(d) ? '' : d.toLocaleString(undefined, {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+                            } catch(e){ formatted=''; }
+                            return `
+                            <div class="notification-item ${!n.is_read ? 'notification-unread' : ''}"
+                                 onclick="markAsRead(${n.id})">
                                 <div class="notification-meta">
-                                    <span class="notification-time">${notification.sent_at}</span>
-                                    ${!notification.is_read ? '<div class="notification-unread-dot"></div>' : ''}
+                                    <span class="notification-time" data-utc-dt="${n.sent_at_utc}">${formatted}</span>
+                                    ${!n.is_read ? '<div class="notification-unread-dot"></div>' : ''}
                                 </div>
-                                <div class="notification-title">${notification.title}</div>
-                                <div class="notification-message">${notification.message}</div>
-                            </div>
-                        `).join('');
+                                <div class="notification-title">${n.title}</div>
+                                <div class="notification-message">${n.message}</div>
+                            </div>`;
+                        }).join('');
                     }
                 })
                 .catch(error => {
                     console.error('Error loading notifications:', error);
-                    // Set fallback empty state
                     const notificationList = document.getElementById('notificationList');
                     if (notificationList) {
                         notificationList.innerHTML = '<div class="notification-item text-center text-muted py-3">Ошибка загрузки уведомлений</div>';
@@ -368,33 +452,200 @@
             });
         }
         
-        // Load notifications on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            // Delay initial load to ensure DOM is ready
-            setTimeout(() => {
-                loadNotifications();
-                // Update notifications every 30 seconds
-                notificationUpdateInterval = setInterval(loadNotifications, 30000);
-            }, 1000);
-        });
-        
-        // Show/hide notifications dropdown
-        const notificationsDropdown = document.getElementById('notificationsDropdown');
-        if (notificationsDropdown) {
-            notificationsDropdown.addEventListener('click', function() {
-                loadNotifications(); // Refresh when opening dropdown
-            });
+        const MARK_ALL_URL = "{% url 'assignments:mark_all_notifications_read' %}";
+        function markAllNotificationsRead(ev){
+            if(ev) ev.preventDefault();
+            const csrf = getCSRFToken();
+            fetch(MARK_ALL_URL, {
+                method:'POST',
+                headers:{'X-CSRFToken': csrf}
+            }).then(r=>r.json()).then(d=>{
+                if(d.status==='success'){
+                    const list = document.getElementById('notificationList');
+                    if(list){
+                        list.querySelectorAll('.notification-item').forEach(el=>{
+                            el.classList.remove('notification-unread');
+                            const dot = el.querySelector('.notification-unread-dot');
+                            if(dot) dot.remove();
+                        });
+                    }
+                    const badge = document.getElementById('notificationCount');
+                    if(badge){ badge.style.display='none'; badge.textContent='0'; }
+                }
+            }).catch(()=>{});
         }
-        
-        // Clear interval when page unloads
-        window.addEventListener('beforeunload', function() {
-            if (notificationUpdateInterval) {
-                clearInterval(notificationUpdateInterval);
+
+        // --- Feedback UI logic ---
+        let currentFeedbackLessonId = null;
+        let selectedRating = 0;
+        let feedbackModal;
+
+        function setStars(rating){
+            selectedRating = rating;
+            const stars = document.querySelectorAll('#feedbackStars .bi');
+            stars.forEach(star => {
+                const val = parseInt(star.getAttribute('data-value'));
+                if(val <= rating){
+                    star.classList.remove('bi-star');
+                    star.classList.add('bi-star-fill');
+                } else {
+                    star.classList.remove('bi-star-fill');
+                    star.classList.add('bi-star');
+                }
+            });
+            const submitBtn = document.getElementById('feedbackSubmitBtn');
+            if (submitBtn) submitBtn.disabled = (selectedRating < 1);
+        }
+
+        function snoozeFeedback(minutes){
+            const until = Date.now() + minutes*60*1000;
+            sessionStorage.setItem('feedbackSnoozeUntil', String(until));
+        }
+        function isSnoozed(){
+            const v = sessionStorage.getItem('feedbackSnoozeUntil');
+            if(!v) return false;
+            const until = parseInt(v);
+            if (isNaN(until)) return false;
+            return Date.now() < until;
+        }
+
+        function showFeedbackModal(lesson){
+            currentFeedbackLessonId = lesson.id;
+            document.getElementById('feedbackLessonId').value = lesson.id;
+            document.getElementById('lessonFeedbackInfo').textContent = `Занятие: ${lesson.title} (преподаватель: ${lesson.teacher})`;
+            setStars(0);
+            document.getElementById('feedbackComment').value = '';
+            if(!feedbackModal){
+                const el = document.getElementById('lessonFeedbackModal');
+                feedbackModal = new bootstrap.Modal(el);
             }
+            feedbackModal.show();
+        }
+
+        function showFeedbackBanner(lesson){
+            const banner = document.getElementById('feedbackBanner');
+            const text = document.getElementById('feedbackBannerText');
+            if (text) text.textContent = `Оцените прошедший урок: ${lesson.title}`;
+            banner.classList.remove('d-none');
+            const btnRate = document.getElementById('feedbackBannerRate');
+            btnRate.onclick = function(){
+                banner.classList.add('d-none');
+                showFeedbackModal(lesson);
+            };
+            const btnDismiss = document.getElementById('feedbackBannerDismiss');
+            btnDismiss.onclick = function(){
+                banner.classList.add('d-none');
+                snoozeFeedback(30); // мягко отложим на 30 минут
+            };
+        }
+
+        async function checkPendingFeedback(){
+            try {
+                const r = await fetch('/scheduling/api/feedback/pending/');
+                const data = await r.json();
+                if(!data.pending) return;
+                const lesson = data.lesson;
+                if(!lesson) return;
+                // Предотвратить повторное открытие для того же урока
+                if(currentFeedbackLessonId === lesson.id) return;
+                if(data.show_banner){
+                    showFeedbackBanner(lesson);
+                } else {
+                    if(!isSnoozed()){
+                        showFeedbackModal(lesson);
+                    }
+                }
+            } catch(e){
+                console.warn('feedback pending check failed', e);
+            }
+        }
+
+        function bindFeedbackEvents(){
+            document.querySelectorAll('#feedbackStars .bi').forEach(star => {
+                star.addEventListener('click', () => {
+                    const val = parseInt(star.getAttribute('data-value'));
+                    setStars(val);
+                });
+            });
+            const skipBtn = document.getElementById('feedbackSkipBtn');
+            if (skipBtn){
+                skipBtn.addEventListener('click', ()=>{
+                    snoozeFeedback(10); // не показывать модалку 10 минут
+                });
+            }
+            const submitBtn = document.getElementById('feedbackSubmitBtn');
+            if (submitBtn){
+                submitBtn.addEventListener('click', async ()=>{
+                    const lessonId = document.getElementById('feedbackLessonId').value;
+                    const comment = document.getElementById('feedbackComment').value;
+                    const csrf = getCSRFToken();
+                    submitBtn.disabled = true;
+                    try{
+                        // Send as application/x-www-form-urlencoded to avoid CORS preflight
+                        const form = new URLSearchParams();
+                        form.append('lesson_id', lessonId);
+                        form.append('rating', selectedRating);
+                        form.append('comment', comment);
+                        // Include csrf token in form body as csrfmiddlewaretoken so Django accepts it without custom headers
+                        form.append('csrfmiddlewaretoken', csrf);
+
+                        const resp = await fetch('/scheduling/api/feedback/submit/', {
+                        const SUBMIT_URL = "{% url 'scheduling:feedback_submit' %}";
+                        const resp = await fetch(SUBMIT_URL, {
+                            body: form,
+                            credentials: 'same-origin'
+                        });
+                         if(resp.ok){
+                            const d = await resp.json();
+                            // Показать благодарность
+                            const div = document.createElement('div');
+                            div.className = 'alert alert-success position-fixed top-0 start-50 translate-middle-x mt-2 shadow';
+                            div.textContent = d.message || 'Спасибо за отзыв';
+                            document.body.appendChild(div);
+                            setTimeout(()=>div.remove(), 3000);
+                            if(feedbackModal){ feedbackModal.hide(); }
+                            currentFeedbackLessonId = null;
+                            // Обновить уведомления
+                            loadNotifications();
+                        } else {
+                            const err = await resp.json().catch(()=>({error:'Ошибка отправки'}));
+                            alert(err.error || 'Ошибка');
+                        }
+                     } catch(e){
+                         alert('Ошибка сети');
+                     } finally {
+                         submitBtn.disabled = false;
+                     }
+                 });
+             }
+        }
+
+        document.addEventListener('DOMContentLoaded', ()=>{
+            // initial notifications
+            try { loadNotifications(); } catch(e){}
+            notificationUpdateInterval = setInterval(()=>{
+                try { loadNotifications(); } catch(e){}
+            }, 60000);
+
+            // feedback
+            bindFeedbackEvents();
+
+            // Сразу проверим наличие уроков для отзыва
+            checkPendingFeedback();
+
+            // Проверяем каждую минуту
+            setInterval(checkPendingFeedback, 60000);
+
+            // Также проверяем при возвращении на вкладку
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden) {
+                    checkPendingFeedback();
+                }
+            });
         });
     </script>
     {% endif %}
-    
+
     {% block extra_js %}
     {% endblock %}
 </body>

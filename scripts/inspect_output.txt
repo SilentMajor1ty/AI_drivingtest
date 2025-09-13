@@ -1,0 +1,32 @@
+Lessons total: 13
+Lesson 11: 'ДОЛЖНО РАБОТАТЬ', teacher_materials present=False
+  LessonFile count: 1
+   LF: 3 | original_name=prompt_1.pdf | is_teacher_material=True | file=lesson_files/prompt_1.pdf
+Lesson 10: 'mdksmdls', teacher_materials present=False
+  LessonFile count: 1
+   LF: 2 | original_name=Датасет_1_FkdJ4VD.txt | is_teacher_material=True | file=lesson_files/Датасет_1_FkdJ4VD.txt
+Lesson 9: 'ЛИВОТТВ', teacher_materials present=False
+  LessonFile count: 0
+Lesson 8: 'Лекция', teacher_materials present=False
+  LessonFile count: 0
+Lesson 7: 'Ну ТОЧНО ВЕРКА', teacher_materials present=True
+  LessonFile count: 1
+   LF: 1 | original_name=prompt_1.pdf | is_teacher_material=True | file=lesson_teacher_materials/prompt_1.pdf
+Lesson 13: 'ПОЖАЛУЙСТА', teacher_materials present=False
+  LessonFile count: 1
+   LF: 5 | original_name=Датасет_1 (1).txt | is_teacher_material=True | file=lesson_files/a80a2b55-9851-402f-a642-44c4cc30a689.txt
+Lesson 12: 'вьцл', teacher_materials present=False
+  LessonFile count: 1
+   LF: 4 | original_name=Датасет_1_FkdJ4VD.txt | is_teacher_material=True | file=lesson_files/ea278674-7826-4015-b3d3-f524eb1781f8.txt
+Lesson 5: 'ТЕСТ НА ВЕРКУ', teacher_materials present=False
+  LessonFile count: 0
+Lesson 6: 'ЛЛВЬВЛ', teacher_materials present=False
+  LessonFile count: 0
+Lesson 4: 'Тест', teacher_materials present=False
+  LessonFile count: 0
+Lesson 1: 'Лекция', teacher_materials present=False
+  LessonFile count: 0
+Lesson 3: 'Тестик', teacher_materials present=False
+  LessonFile count: 0
+Lesson 2: 'Тест', teacher_materials present=False
+  LessonFile count: 0

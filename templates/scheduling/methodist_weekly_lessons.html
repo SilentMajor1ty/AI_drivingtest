@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load i18n %}
 
-{% block title %}{% trans "Недельный отчет по занятиям" %} - {% trans "Автошкола" %}{% endblock %}
+{% block title %}{% trans "Недельный отчет по занятиям" %} - {% trans "Школа" %}{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
@@ -51,9 +51,9 @@
                 <select name="teacher" id="teacher" class="form-select">
                     <option value="">{% trans "Все преподаватели" %}</option>
                     {% for teacher in all_teachers %}
-                    <option value="{{ teacher.id }}" {% if current_filters.teacher == teacher.id|stringformat:"s" %}selected{% endif %}>
-                        {{ teacher.full_name }}
-                    </option>
+                        <option value="{{ teacher.id }}" {% if current_filters.teacher|default:'' == teacher.id|stringformat:'s' %}selected{% endif %}>
+                            {{ teacher.full_name }}
+                        </option>
                     {% endfor %}
                 </select>
             </div>
@@ -63,9 +63,9 @@
                 <select name="status" id="status" class="form-select">
                     <option value="">{% trans "Все статусы" %}</option>
                     {% for status_key, status_label in status_choices %}
-                    <option value="{{ status_key }}" {% if current_filters.status == status_key %}selected{% endif %}>
-                        {{ status_label }}
-                    </option>
+                        <option value="{{ status_key }}" {% if current_filters.status|default:'' == status_key|stringformat:'s' %}selected{% endif %}>
+                            {{ status_label }}
+                        </option>
                     {% endfor %}
                 </select>
             </div>
@@ -89,7 +89,7 @@
             <div class="card-body">
                 <div class="d-flex justify-content-between">
                     <div>
-                        <h4 class="card-title">{{ lessons.count }}</h4>
+                        <h4 class="card-title">{{ total_count }}</h4>
                         <p class="card-text">{% trans "Всего занятий" %}</p>
                     </div>
                     <i class="bi bi-calendar3 fs-1"></i>
@@ -102,7 +102,7 @@
             <div class="card-body">
                 <div class="d-flex justify-content-between">
                     <div>
-                        <h4 class="card-title">{{ lessons|length|add:"0" }}</h4>
+                        <h4 class="card-title">{{ completed_count }}</h4>
                         <p class="card-text">{% trans "Завершено" %}</p>
                     </div>
                     <i class="bi bi-check-circle fs-1"></i>
@@ -115,7 +115,7 @@
             <div class="card-body">
                 <div class="d-flex justify-content-between">
                     <div>
-                        <h4 class="card-title">{{ lessons|length|add:"0" }}</h4>
+                        <h4 class="card-title">{{ scheduled_count }}</h4>
                         <p class="card-text">{% trans "Запланировано" %}</p>
                     </div>
                     <i class="bi bi-clock fs-1"></i>
@@ -124,11 +124,26 @@
         </div>
     </div>
     <div class="col-md-3">
+        <div class="card bg-warning text-dark">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="card-title">{{ rescheduled_count }}</h4>
+                        <p class="card-text">{% trans "Перенесено" %}</p>
+                    </div>
+                    <i class="bi bi-arrow-repeat fs-1"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row mb-4">
+    <div class="col-md-3">
         <div class="card bg-danger text-white">
             <div class="card-body">
                 <div class="d-flex justify-content-between">
                     <div>
-                        <h4 class="card-title">{{ lessons|length|add:"0" }}</h4>
+                        <h4 class="card-title">{{ cancelled_count }}</h4>
                         <p class="card-text">{% trans "Отменено" %}</p>
                     </div>
                     <i class="bi bi-x-circle fs-1"></i>
@@ -156,6 +171,7 @@
                         <th>{% trans "Завершено" %}</th>
                         <th>{% trans "Запланировано" %}</th>
                         <th>{% trans "Отменено" %}</th>
+                        <th>{% trans "Перенесено" %}</th>
                         <th>{% trans "Действия" %}</th>
                     </tr>
                 </thead>
@@ -174,6 +190,9 @@
                         </td>
                         <td>
                             <span class="badge bg-danger">{{ summary.cancelled_lessons }}</span>
+                        </td>
+                        <td>
+                            <span class="badge bg-warning">{{ summary.rescheduled_lessons }}</span>
                         </td>
                         <td>
                             <a href="{% url 'scheduling:teacher_schedule' summary.teacher.id %}" class="btn btn-sm btn-outline-primary">
@@ -220,7 +239,7 @@
                         <td>{{ lesson.teacher.full_name }}</td>
                         <td>{{ lesson.student.full_name }}</td>
                         <td>
-                            <span class="badge bg-{% if lesson.status == 'completed' %}success{% elif lesson.status == 'cancelled' %}danger{% elif lesson.status == 'rescheduled' %}warning{% else %}info{% endif %}">
+                            <span class="badge bg-{% if lesson.status == 'completed' %}success{% elif lesson.status == 'cancelled' %}danger{% elif lesson.status == 'rescheduled' %}warning{% elif lesson.status == 'scheduled' %}primary{% else %}info{% endif %}">
                                 {{ lesson.get_status_display }}
                             </span>
                         </td>
@@ -230,10 +249,10 @@
                                     <i class="bi bi-eye"></i>
                                 </a>
                                 {% if lesson.status == 'scheduled' %}
-                                <button class="btn btn-outline-warning" onclick="rescheduleLesson({{ lesson.id }})" title="{% trans 'Перенести' %}">
+                                <button class="btn btn-outline-warning" onclick="rescheduleLesson('{{ lesson.id }}')" title="{% trans 'Перенести' %}">
                                     <i class="bi bi-calendar-plus"></i>
                                 </button>
-                                <button class="btn btn-outline-danger" onclick="cancelLesson({{ lesson.id }})" title="{% trans 'Отменить' %}">
+                                <button class="btn btn-outline-danger" onclick="cancelLesson('{{ lesson.id }}')" title="{% trans 'Отменить' %}">
                                     <i class="bi bi-x-circle"></i>
                                 </button>
                                 {% endif %}
@@ -314,6 +333,9 @@
 </div>
 
 <script>
+const langCode = '{{ request.LANGUAGE_CODE|default:"ru" }}';
+const baseLessonUrl = '/' + langCode + '/scheduling/lessons/';
+
 function getCookie(name) {
     let cookieValue = null;
     if (document.cookie && document.cookie !== '') {
@@ -345,17 +367,17 @@ function submitReschedule() {
     const lessonId = document.getElementById('reschedule-lesson-id').value;
     const newDate = document.getElementById('new_start_date').value;
     const newTime = document.getElementById('new_start_time').value;
-    
+
     if (!newDate || !newTime) {
         alert('{% trans "Пожалуйста, укажите новую дату и время" %}');
         return;
     }
-    
+
     const formData = new FormData();
     formData.append('new_start_date', newDate);
     formData.append('new_start_time', newTime);
-    
-    fetch(`/scheduling/lessons/${lessonId}/reschedule/`, {
+
+    fetch(baseLessonUrl + `${lessonId}/reschedule/`, {
         method: 'POST',
         body: formData,
         headers: {
@@ -376,11 +398,11 @@ function submitReschedule() {
 function submitCancel() {
     const lessonId = document.getElementById('cancel-lesson-id').value;
     const reason = document.getElementById('cancel_reason').value;
-    
+
     const formData = new FormData();
     formData.append('reason', reason);
-    
-    fetch(`/scheduling/lessons/${lessonId}/cancel/`, {
+
+    fetch(baseLessonUrl + `${lessonId}/cancel/`, {
         method: 'POST',
         body: formData,
         headers: {

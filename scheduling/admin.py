@@ -4,7 +4,7 @@ from django.urls import reverse
 from django.utils.safestring import mark_safe
 import logging
 
-from .models import Subject, Lesson, LessonTemplate, Schedule, ProblemReport
+from .models import Subject, Lesson, LessonTemplate, Schedule, ProblemReport, LessonFeedback
 
 logger = logging.getLogger('admin_actions')
 
@@ -150,3 +150,11 @@ class ScheduleAdmin(admin.ModelAdmin):
     def time_slot(self, obj):
         return f"{obj.start_time.strftime('%H:%M')} - {obj.end_time.strftime('%H:%M')}"
     time_slot.short_description = 'Time Slot'
+
+
+@admin.register(LessonFeedback)
+class LessonFeedbackAdmin(admin.ModelAdmin):
+    list_display = ('lesson', 'user', 'is_teacher', 'rating', 'created_at')
+    list_filter = ('is_teacher', 'rating', 'created_at', 'lesson__teacher')
+    search_fields = ('lesson__title', 'user__first_name', 'user__last_name', 'comment')
+    readonly_fields = ('created_at',)

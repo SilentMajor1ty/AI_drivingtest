@@ -1,0 +1,6 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% block title %}{{ assignment.title }} - {% trans "Автошкола" %}{% endblock %}
+{% block content %}
+{% include 'assignments/../assignments/../../templates/assignments/assignment_detail.html' %}
+{% endblock %}

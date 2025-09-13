@@ -6,8 +6,7 @@ from django.urls import reverse_lazy
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_http_methods, require_POST
 from django.db import models
 import json
 import pytz
@@ -184,22 +183,27 @@ class UserUpdateView(LoginRequiredMixin, UpdateView):
         return super().form_valid(form)
 
 
-@csrf_exempt
-@require_http_methods(["POST"])
+@login_required
+@require_POST
 def set_timezone(request):
-    """Set user timezone based on browser detection"""
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            timezone_name = data.get('timezone')
-            
-            if timezone_name and timezone_name in pytz.all_timezones:
-                # Store in session for later use
-                request.session['detected_timezone'] = timezone_name
-                return JsonResponse({'status': 'success'})
-            else:
-                return JsonResponse({'status': 'invalid_timezone'})
-        except (json.JSONDecodeError, KeyError):
-            return JsonResponse({'status': 'error'})
-    
-    return JsonResponse({'status': 'method_not_allowed'})
+    """Устанавливает таймзону: сохраняет в сессии и (если отличается) обновляет у пользователя."""
+    tz_name = None
+    try:
+        if request.content_type == 'application/json':
+            data = json.loads(request.body or '{}')
+            tz_name = data.get('timezone')
+        else:
+            tz_name = request.POST.get('timezone')
+    except json.JSONDecodeError:
+        return JsonResponse({'status': 'error', 'error': 'bad_json'}, status=400)
+
+    if not tz_name or tz_name not in pytz.all_timezones:
+        return JsonResponse({'status': 'invalid_timezone'}, status=400)
+
+    request.session['detected_timezone'] = tz_name
+    updated = False
+    if request.user.is_authenticated and getattr(request.user, 'timezone', None) != tz_name:
+        request.user.timezone = tz_name
+        request.user.save(update_fields=['timezone'])
+        updated = True
+    return JsonResponse({'status': 'ok', 'timezone': tz_name, 'updated': updated})

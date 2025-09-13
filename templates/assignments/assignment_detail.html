@@ -85,11 +85,10 @@
                     </div>
                 </div>
                 
-                
-                {% if assignment.assignment_file or assignment_materials.files.all %}
+                {% if assignment.assignment_file or assignment_files %}
                 <div class="mt-3">
                     <h6>{% trans "Материалы задания" %}</h6>
-                    
+
                     {% if assignment.assignment_file %}
                     <div class="d-flex align-items-center mb-2">
                         <i class="bi bi-file-earmark me-2"></i>
@@ -98,9 +97,9 @@
                         </a>
                     </div>
                     {% endif %}
-                    
-                    {% if assignment_materials %}
-                        {% for file in assignment_materials.files.all %}
+
+                    {% if assignment_files %}
+                        {% for file in assignment_files %}
                         <div class="d-flex align-items-center mb-2">
                             <i class="bi bi-file-earmark me-2"></i>
                             <a href="{{ file.file.url }}" class="btn btn-outline-info btn-sm me-2" download>
@@ -108,6 +107,8 @@
                             </a>
                             <small class="text-muted">({{ file.file_size|filesizeformat }})</small>
                         </div>
+                        {% empty %}
+                        <small class="text-muted">{% trans "Нет прикрепленных файлов" %}</small>
                         {% endfor %}
                     {% endif %}
                 </div>
@@ -294,8 +295,6 @@
     </div>
 </div>
 
-
-
 <!-- Grade Assignment Modal -->
 {% if user.is_teacher or user.is_methodist %}
     {% if not assignment.lesson or assignment.lesson.teacher == user or user.is_methodist %}
@@ -443,40 +442,30 @@
     </div>
 </div>
 
-
-
 <script>
-// Handle modal submission file selection
+const langPrefix = '/{{ LANGUAGE_CODE }}/';
+// Modal submission file selection logic
 document.addEventListener('DOMContentLoaded', function() {
     const modalSubmissionFilesInput = document.getElementById('modal_submission_files');
     const modalSubmissionFilesList = document.getElementById('modal-submission-files-list');
     let modalSelectedFiles = [];
-    
     if (modalSubmissionFilesInput) {
         modalSubmissionFilesInput.addEventListener('change', function(e) {
             const files = Array.from(e.target.files);
-            
             files.forEach(file => {
                 const existingIndex = modalSelectedFiles.findIndex(f => f.name === file.name && f.size === file.size);
-                if (existingIndex === -1) {
-                    modalSelectedFiles.push(file);
-                }
+                if (existingIndex === -1) modalSelectedFiles.push(file);
             });
-            
             updateModalFilesList();
             e.target.value = '';
         });
     }
-    
     function updateModalFilesList() {
         if (!modalSubmissionFilesList) return;
-        
         modalSubmissionFilesList.innerHTML = '';
-        
         if (modalSelectedFiles.length > 0) {
             const filesContainer = document.createElement('div');
             filesContainer.className = 'selected-files-container';
-            
             modalSelectedFiles.forEach((file, index) => {
                 const fileItem = document.createElement('div');
                 fileItem.className = 'selected-file-item d-flex justify-content-between align-items-center mb-2 p-2 border rounded bg-light';
@@ -488,158 +477,67 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                     <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeModalFile(${index})">
                         <i class="bi bi-x"></i>
-                    </button>
-                `;
+                    </button>`;
                 filesContainer.appendChild(fileItem);
             });
-            
             modalSubmissionFilesList.appendChild(filesContainer);
         }
     }
-    
     window.removeModalFile = function(index) {
         modalSelectedFiles.splice(index, 1);
         updateModalFilesList();
     };
-    
-    // Handle modal form submission
     const modalForm = document.querySelector('#submitModal form');
     if (modalForm) {
         modalForm.addEventListener('submit', function(e) {
             const commentsField = document.getElementById('modal_comments');
             const hasFiles = modalSelectedFiles.length > 0;
             const hasComments = commentsField && commentsField.value.trim();
-            
             if (!hasFiles && !hasComments) {
                 alert('{% trans "Пожалуйста, загрузите файлы или добавьте комментарий" %}');
                 e.preventDefault();
                 return;
             }
-            
             if (hasFiles) {
                 const formData = new FormData(modalForm);
-                
-                // Remove the original file field
                 formData.delete('submission_files');
-                
-                // Add selected files
-                modalSelectedFiles.forEach((file) => {
-                    formData.append('submission_files', file);
-                });
-                
+                modalSelectedFiles.forEach((file) => formData.append('submission_files', file));
                 e.preventDefault();
-                
-                // Submit using fetch
-                fetch(modalForm.action, {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-CSRFToken': getCookie('csrftoken'),
-                    }
-                })
-                .then(response => {
-                    if (response.ok) {
-                        location.reload();
-                    } else {
-                        return response.text().then(text => {
-                            alert('{% trans "Ошибка при отправке работы. Пожалуйста, попробуйте еще раз." %}');
-                        });
-                    }
-                })
-                .catch(error => {
-                    alert('{% trans "Ошибка при отправке работы. Пожалуйста, попробуйте еще раз." %}');
-                });
+                fetch(modalForm.action, { method: 'POST', body: formData, headers: { 'X-CSRFToken': getCookie('csrftoken') } })
+                .then(response => { if (response.ok) { location.reload(); } else { return response.text().then(()=> alert('{% trans "Ошибка при отправке работы. Пожалуйста, попробуйте еще раз." %}')); } })
+                .catch(()=> alert('{% trans "Ошибка при отправке работы. Пожалуйста, попробуйте еще раз." %}'));
             }
         });
     }
-    
     function formatFileSize(bytes) {
         if (bytes === 0) return '0 Bytes';
-        const k = 1024;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        const k = 1024; const sizes = ['Bytes','KB','MB','GB']; const i = Math.floor(Math.log(bytes)/Math.log(k));
+        return parseFloat((bytes/Math.pow(k,i)).toFixed(2)) + ' ' + sizes[i];
     }
-    
     function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
+        let cookieValue = null; if (document.cookie && document.cookie !== '') {
             const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
-            }
-        }
-        return cookieValue;
+            for (let i=0; i<cookies.length; i++) { const cookie = cookies[i].trim(); if (cookie.substring(0, name.length+1) === (name + '=')) { cookieValue = decodeURIComponent(cookie.substring(name.length+1)); break; } }
+        } return cookieValue;
     }
 });
-
-function showFileUpload(submissionId) {
-    document.getElementById('upload-submission-id').value = submissionId;
-    new bootstrap.Modal(document.getElementById('fileUploadModal')).show();
-}
-
+function showFileUpload(submissionId) { document.getElementById('upload-submission-id').value = submissionId; new bootstrap.Modal(document.getElementById('fileUploadModal')).show(); }
 function uploadFiles() {
     const submissionId = document.getElementById('upload-submission-id').value;
     const fileInput = document.getElementById('additional_files');
-    const files = fileInput.files;
-    
-    if (files.length === 0) {
-        alert('{% trans "Пожалуйста, выберите файлы для загрузки" %}');
-        return;
-    }
-    
-    const formData = new FormData();
-    for (let i = 0; i < files.length; i++) {
-        formData.append('files', files[i]);
-    }
-    
-    fetch(`/assignments/submissions/${submissionId}/upload-files/`, {
-        method: 'POST',
-        body: formData,
-        headers: {
-            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            alert(data.message);
-            location.reload();
-        } else {
-            alert('{% trans "Ошибка загрузки файлов: " %}' + data.error);
-        }
-    });
+    const files = fileInput.files; if (files.length === 0) { alert('{% trans "Пожалуйста, выберите файлы для загрузки" %}'); return; }
+    const formData = new FormData(); for (let i=0;i<files.length;i++) formData.append('files', files[i]);
+    fetch(`${langPrefix}assignments/submissions/${submissionId}/upload-files/`, { method: 'POST', body: formData, headers: { 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value } })
+    .then(r=>r.json()).then(data=>{ if(data.success){ location.reload(); } else { alert('{% trans "Ошибка загрузки файлов: " %}'+data.error); }});
 }
-
 function deleteFile(fileId) {
-    if (confirm('{% trans "Вы уверены, что хотите удалить этот файл?" %}')) {
-        fetch(`/assignments/files/${fileId}/delete/`, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                location.reload();
-            } else {
-                alert('{% trans "Ошибка удаления файла: " %}' + data.error);
-            }
-        });
-    }
+    if (!confirm('{% trans "Вы уверены, что хотите удалить этот файл?" %}')) return;
+    fetch(`${langPrefix}assignments/files/${fileId}/delete/`, { method: 'POST', headers: { 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value } })
+    .then(r=>r.json()).then(data=>{ if(data.success){ location.reload(); } else { alert('{% trans "Ошибка удаления файла: " %}'+data.error); }});
 }
 </script>
 
 <style>
-.submission-item:last-child {
-    border-bottom: none !important;
-    margin-bottom: 0 !important;
-    padding-bottom: 0 !important;
-}
+.submission-item:last-child { border-bottom: none !important; margin-bottom: 0 !important; padding-bottom: 0 !important; }
 </style>
 {% endblock %}

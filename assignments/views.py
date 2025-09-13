@@ -7,6 +7,7 @@ from django.contrib import messages
 from django.http import JsonResponse
 from django.utils import timezone
 from django.db import models
+import datetime
 
 from .models import Assignment, AssignmentSubmission, Notification
 from .forms import AssignmentForm, AssignmentSubmissionForm
@@ -94,12 +95,19 @@ class AssignmentDetailView(LoginRequiredMixin, DetailView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['submissions'] = self.object.submissions.all().order_by('-submitted_at')
-        
+        # Показываем только реальные submissions студентов (is_final=True)
+        context['submissions'] = self.object.submissions.filter(is_final=True).order_by('-submitted_at')
+
         # Get assignment materials from non-final submissions (uploaded during assignment creation)
         assignment_materials = self.object.submissions.filter(is_final=False).first()
         context['assignment_materials'] = assignment_materials
         
+        # Get all assignment files from materials submission
+        if assignment_materials:
+            context['assignment_files'] = assignment_materials.files.all()
+        else:
+            context['assignment_files'] = []
+
         return context
 
 
@@ -117,11 +125,16 @@ class AssignmentCreateView(LoginRequiredMixin, CreateView):
         return super().dispatch(request, *args, **kwargs)
     
     def form_valid(self, form):
+        print(f"DEBUG: request.FILES = {dict(self.request.FILES)}")  # Показываем все файлы в запросе
+        print(f"DEBUG: request.POST = {dict(self.request.POST)}")    # Показываем все POST данные
+
         form.instance.created_by = self.request.user
         response = super().form_valid(form)
         
         # Handle multiple file uploads
         assignment_files = self.request.FILES.getlist('assignment_files')
+        print(f"DEBUG: Получено файлов assignment_files: {len(assignment_files)}")  # Отладочный вывод
+
         if assignment_files:
             from .models import AssignmentSubmission, AssignmentFile
             
@@ -131,15 +144,17 @@ class AssignmentCreateView(LoginRequiredMixin, CreateView):
                 comments="Assignment materials",
                 is_final=False  # This is not a student submission
             )
-            
+            print(f"DEBUG: Создан submission {submission.id}")  # Отладочный вывод
+
             # Add all uploaded files
             for file in assignment_files:
-                AssignmentFile.objects.create(
+                assignment_file = AssignmentFile.objects.create(
                     submission=submission,
                     file=file,
                     original_name=file.name
                 )
-        
+                print(f"DEBUG: Создан файл {assignment_file.original_name}")  # Отладочный вывод
+
         # Create notification for student
         assignment = self.object
         Notification.objects.create(
@@ -296,15 +311,11 @@ def grade_assignment(request, pk):
 
 @login_required
 def get_notifications_api(request):
-    """API endpoint to get user notifications"""
+    """API endpoint to get user notifications (отдаём UTC и epoch, форматирование на клиенте)."""
     notifications = Notification.objects.filter(user=request.user).order_by('-sent_at')
-    
-    # Get unread count first, before slicing
     unread_count = notifications.filter(is_read=False).count()
-    
-    # Then slice for display
     notifications_limited = notifications[:10]
-    
+
     data = {
         'notifications': [
             {
@@ -312,14 +323,14 @@ def get_notifications_api(request):
                 'title': n.title,
                 'message': n.message,
                 'is_read': n.is_read,
-                'sent_at': n.sent_at.strftime('%d.%m.%Y %H:%M'),
+                'sent_at_utc': n.sent_at.astimezone(datetime.timezone.utc).isoformat().replace('+00:00','Z'),
+                'sent_at_epoch': int(n.sent_at.timestamp()),
                 'notification_type': n.notification_type,
             }
             for n in notifications_limited
         ],
         'unread_count': unread_count
     }
-    
     return JsonResponse(data)
 
 

@@ -1,284 +1,149 @@
 {% extends 'base.html' %}
-{% load i18n %}
-
-{% block title %}{% trans "Детали занятия" %} - {% trans "Автошкола" %}{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-    <h1 class="h2">
-        <i class="bi bi-calendar-event"></i> {{ lesson.title }}
-    </h1>
-    <div class="btn-toolbar mb-2 mb-md-0">
-        <a href="{% url 'scheduling:lesson_list' %}" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-arrow-left"></i> {% trans "Назад к занятиям" %}
-        </a>
-    </div>
-</div>
+<h2>Lesson Details</h2>
 
-<div class="row">
-    <div class="col-md-8">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-info-circle"></i> {% trans "Информация о занятии" %}
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6">
-                        <p><strong>{% trans "Предмет" %}:</strong> {{ lesson.subject.name }}</p>
-                        <p><strong>{% trans "Преподаватель" %}:</strong> {{ lesson.teacher.full_name }}</p>
-                        <p><strong>{% trans "Ученик" %}:</strong> {{ lesson.student.full_name }}</p>
-                    </div>
-                    <div class="col-md-6">
-                        <p><strong>{% trans "Дата и время" %}:</strong> {{ lesson.start_time|date:"d.m.Y H:i" }} - {{ lesson.end_time|date:"H:i" }}</p>
-                        <p><strong>{% trans "Статус" %}:</strong> 
-                            <span class="badge bg-{% if lesson.status == 'completed' %}success{% elif lesson.status == 'cancelled' %}danger{% elif lesson.status == 'rescheduled' %}warning{% else %}info{% endif %}">
-                                {{ lesson.get_status_display }}
-                            </span>
-                        </p>
-                        {% if lesson.zoom_link %}
-                        <p><strong>{% trans "Ссылка" %}:</strong> 
-                            <a href="{{ lesson.zoom_link }}" target="_blank" class="btn btn-sm btn-success">
-                                <i class="bi bi-camera-video"></i> {% trans "Присоединиться" %}
-                            </a>
-                        </p>
-                        {% endif %}
-                    </div>
-                </div>
-                
-                {% if lesson.description %}
-                <hr>
-                <p><strong>{% trans "Описание" %}:</strong></p>
-                <p>{{ lesson.description|linebreaks }}</p>
-                {% endif %}
-            </div>
-        </div>
-        
-        <!-- Teacher Materials Section -->
-        {% if lesson.lesson_files.exists %}
-        <div class="card mt-4">
-            <div class="card-header">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-file-earmark-arrow-down"></i> {% trans "Материалы занятия" %}
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    {% for file in lesson.lesson_files.all %}
-                    <div class="col-md-6 mb-2">
-                        <div class="d-flex align-items-center p-2 border rounded">
-                            <i class="bi bi-file-earmark me-2"></i>
-                            <div class="flex-grow-1">
-                                <span class="fw-medium">{{ file.original_name }}</span>
-                                <br>
-                                <small class="text-muted">{{ file.file_size|filesizeformat }} - {{ file.uploaded_at|date:"d.m.Y H:i" }}</small>
-                            </div>
-                            <a href="{{ file.file.url }}" class="btn btn-sm btn-outline-primary" download>
-                                <i class="bi bi-download"></i>
-                            </a>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-        </div>
-        {% endif %}
-    </div>
-    
-    <div class="col-md-4">
-        <!-- Actions Card -->
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-gear"></i> {% trans "Действия" %}
-                </h5>
-            </div>
-            <div class="card-body">
-                {% if user.is_methodist %}
-                <div class="d-grid gap-2">
-                    <a href="{% url 'scheduling:lesson_edit' lesson.pk %}" class="btn btn-primary">
-                        <i class="bi bi-pencil"></i> {% trans "Редактировать" %}
-                    </a>
-                    {% if lesson.status == 'scheduled' %}
-                    <button class="btn btn-warning" onclick="rescheduleLesson({{ lesson.id }})">
-                        <i class="bi bi-calendar-plus"></i> {% trans "Перенести" %}
-                    </button>
-                    <button class="btn btn-danger" onclick="cancelLesson({{ lesson.id }})">
-                        <i class="bi bi-x-circle"></i> {% trans "Отменить" %}
-                    </button>
-                    {% endif %}
-                </div>
-                {% endif %}
-                
-                {% if lesson.can_be_confirmed and user in lesson.teacher,lesson.student %}
-                <div class="mt-3">
-                    <h6>{% trans "Подтвердить проведение" %}</h6>
-                    <form method="post" action="{% url 'scheduling:confirm_lesson_completion' lesson.pk %}">
-                        {% csrf_token %}
-                        <div class="mb-2">
-                            <label for="rating" class="form-label">{% trans "Оценка (1-10)" %}</label>
-                            <select name="rating" id="rating" class="form-select" required>
-                                {% for i in "12345678910"|make_list %}
-                                <option value="{{ forloop.counter }}">{{ forloop.counter }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="mb-2">
-                            <label for="comments" class="form-label">{% trans "Комментарии" %}</label>
-                            <textarea name="comments" id="comments" class="form-control" rows="3"></textarea>
-                        </div>
-                        <button type="submit" class="btn btn-success btn-sm">
-                            <i class="bi bi-check-circle"></i> {% trans "Подтвердить" %}
-                        </button>
-                    </form>
-                </div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-</div>
+<p><strong>Title:</strong> {{ lesson.title }}</p>
+<p><strong>Subject:</strong> {{ lesson.subject.name }}</p>
+<p><strong>Teacher:</strong> {{ lesson.teacher.full_name }}</p>
+<p><strong>Student:</strong> {{ lesson.student.full_name }}</p>
+<p><strong>Start Time:</strong> {{ lesson.start_time }}</p>
+<p><strong>End Time:</strong> {{ lesson.end_time }}</p>
+<p><strong>Description:</strong> {{ lesson.description }}</p>
 
-<!-- Reschedule Modal -->
-<div class="modal fade" id="rescheduleModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">{% trans "Перенести занятие" %}</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <input type="hidden" id="reschedule-lesson-id">
-                <div class="mb-3">
-                    <label for="new_start_date" class="form-label">{% trans "Новая дата" %}</label>
-                    <input type="date" class="form-control" id="new_start_date" required>
-                </div>
-                <div class="mb-3">
-                    <label for="new_start_time" class="form-label">{% trans "Новое время" %}</label>
-                    <input type="time" class="form-control" id="new_start_time" required>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{% trans "Отмена" %}</button>
-                <button type="button" class="btn btn-primary" onclick="submitReschedule()">{% trans "Перенести" %}</button>
-            </div>
-        </div>
-    </div>
-</div>
+<h3>Attached Files</h3>
+<ul>
+    {% for file in lesson_files_all %}
+    <li><a href="{{ file.file.url }}" download>{{ file.original_name }}</a></li>
+    {% empty %}
+    <li>No files attached.</li>
+    {% endfor %}
+</ul>
 
-<!-- Cancel Modal -->
-<div class="modal fade" id="cancelModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">{% trans "Отменить занятие" %}</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <input type="hidden" id="cancel-lesson-id">
-                <div class="mb-3">
-                    <label for="cancel_reason" class="form-label">{% trans "Причина отмены (необязательно)" %}</label>
-                    <textarea class="form-control" id="cancel_reason" rows="3" 
-                              placeholder="{% trans 'Укажите причину отмены занятия...' %}"></textarea>
-                </div>
-                <div class="alert alert-warning">
-                    <i class="bi bi-exclamation-triangle me-2"></i>
-                    {% trans "Ученик и преподаватель получат уведомления об отмене занятия." %}
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{% trans "Отмена" %}</button>
-                <button type="button" class="btn btn-danger" onclick="submitCancel()">
-                    {% trans "Отменить занятие" %}
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
+{% if lesson_files_teacher %}
+<h3>Teacher Materials</h3>
+<ul>
+    {% for file in lesson_files_teacher %}
+    <li><a href="{{ file.file.url }}" download>{{ file.original_name }}</a></li>
+    {% endfor %}
+</ul>
+{% endif %}
 
+{% if lesson.zoom_link %}
+<div class="mt-3">
+    <a id="joinLessonBtn" class="btn btn-success disabled" href="#" data-start="{{ lesson.start_time|date:'c' }}" data-end="{{ lesson.end_time|date:'c' }}" data-link="{{ lesson.zoom_link }}">
+        <i class="bi bi-camera-video"></i> Присоединиться к занятию
+    </a>
+    <span id="joinLessonInfo" class="text-muted ms-2" style="font-size:0.9em;"></span>
+</div>
 <script>
-function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
+(function(){
+    function updateJoinBtn(){
+        var btn = document.getElementById('joinLessonBtn');
+        var info = document.getElementById('joinLessonInfo');
+        if(!btn) return;
+        var start = new Date(btn.getAttribute('data-start'));
+        var end = new Date(btn.getAttribute('data-end'));
+        var now = new Date();
+        var windowOpen = new Date(start.getTime()-5*60000);
+        if(now >= windowOpen && now <= end){
+            btn.classList.remove('disabled');
+            btn.setAttribute('href', btn.getAttribute('data-link'));
+            btn.title = 'Присоединиться к занятию';
+            info.textContent = '';
+        } else {
+            btn.classList.add('disabled');
+            btn.removeAttribute('href');
+            if(now < windowOpen){
+                btn.title = 'Доступно за 5 минут до начала';
+                info.textContent = 'Кнопка станет активной за 5 минут до начала.';
+            } else {
+                btn.title = 'Занятие завершено';
+                info.textContent = 'Занятие завершено.';
             }
         }
     }
-    return cookieValue;
-}
-
-function rescheduleLesson(lessonId) {
-    document.getElementById('reschedule-lesson-id').value = lessonId;
-    const modal = new bootstrap.Modal(document.getElementById('rescheduleModal'));
-    modal.show();
-}
-
-function cancelLesson(lessonId) {
-    document.getElementById('cancel-lesson-id').value = lessonId;
-    const modal = new bootstrap.Modal(document.getElementById('cancelModal'));
-    modal.show();
-}
-
-function submitReschedule() {
-    const lessonId = document.getElementById('reschedule-lesson-id').value;
-    const newDate = document.getElementById('new_start_date').value;
-    const newTime = document.getElementById('new_start_time').value;
-    
-    if (!newDate || !newTime) {
-        alert('{% trans "Пожалуйста, укажите новую дату и время" %}');
-        return;
-    }
-    
-    const formData = new FormData();
-    formData.append('new_start_date', newDate);
-    formData.append('new_start_time', newTime);
-    
-    fetch(`/scheduling/lessons/${lessonId}/reschedule/`, {
-        method: 'POST',
-        body: formData,
-        headers: {
-            'X-CSRFToken': getCookie('csrftoken'),
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            alert('{% trans "Занятие успешно перенесено" %}');
-            location.reload();
-        } else {
-            alert('{% trans "Ошибка переноса: " %}' + data.error);
-        }
-    });
-}
-
-function submitCancel() {
-    const lessonId = document.getElementById('cancel-lesson-id').value;
-    const reason = document.getElementById('cancel_reason').value;
-    
-    const formData = new FormData();
-    formData.append('reason', reason);
-    
-    fetch(`/scheduling/lessons/${lessonId}/cancel/`, {
-        method: 'POST',
-        body: formData,
-        headers: {
-            'X-CSRFToken': getCookie('csrftoken'),
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            alert('{% trans "Занятие успешно отменено" %}');
-            location.reload();
-        } else {
-            alert('{% trans "Ошибка отмены: " %}' + data.error);
-        }
-    });
-}
+    updateJoinBtn();
+    setInterval(updateJoinBtn, 30000);
+})();
 </script>
+{% endif %}
+
+{% if user.is_student %}
+<div id="reportProblemSection"></div>
+<script>
+(function(){
+    // Проверка времени: кнопка доступна если прошло 5 минут от старта
+    var start = new Date("{{ lesson.start_time|date:'c' }}");
+    var now = new Date();
+    var windowOpen = new Date(start.getTime()+5*60000);
+    var canReport = now >= windowOpen;
+    var section = document.getElementById('reportProblemSection');
+    if(canReport){
+        section.innerHTML = `
+        <button class="btn btn-danger mt-3" id="openReportModal">Пожаловаться на занятие</button>
+        <div class="modal fade" id="reportProblemModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Пожаловаться на занятие</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="reportProblemForm">
+                            <div class="mb-3">
+                                <label for="problemType" class="form-label">Тип проблемы</label>
+                                <select class="form-select" id="problemType" name="problem_type" required>
+                                    <option value="tech">Техническая проблема</option>
+                                    <option value="no_teacher">Учитель не пришёл</option>
+                                    <option value="other">Другое</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="problemDesc" class="form-label">Описание</label>
+                                <textarea class="form-control" id="problemDesc" name="description" rows="3" required></textarea>
+                            </div>
+                            <input type="hidden" name="lesson_id" value="{{ lesson.id }}">
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-danger">Отправить жалобу</button>
+                            </div>
+                        </form>
+                        <div id="reportSuccessMsg" class="alert alert-success mt-3 d-none">Жалоба отправлена!</div>
+                        <div id="reportErrorMsg" class="alert alert-danger mt-3 d-none"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        `;
+        var modal = new bootstrap.Modal(document.getElementById('reportProblemModal'));
+        document.getElementById('openReportModal').onclick = function(){ modal.show(); };
+        document.getElementById('reportProblemForm').onsubmit = function(e){
+            e.preventDefault();
+            var form = e.target;
+            var fd = new FormData(form);
+            fetch('/scheduling/report-problem/', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value },
+                body: fd
+            }).then(r=>r.json()).then(data=>{
+                if(data.success){
+                    form.classList.add('d-none');
+                    document.getElementById('reportSuccessMsg').classList.remove('d-none');
+                    document.getElementById('openReportModal').disabled = true;
+                }else{
+                    document.getElementById('reportErrorMsg').textContent = data.error||'Ошибка отправки';
+                    document.getElementById('reportErrorMsg').classList.remove('d-none');
+                }
+            }).catch(()=>{
+                document.getElementById('reportErrorMsg').textContent = 'Ошибка отправки';
+                document.getElementById('reportErrorMsg').classList.remove('d-none');
+            });
+        };
+    }else{
+        section.innerHTML = `<div class="alert alert-info mt-3">Жалоба доступна после начала занятия.</div>`;
+    }
+})();
+</script>
+{% endif %}
+
 {% endblock %}

@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load i18n %}
 
-{% block title %}{% trans "Управление занятиями" %} - {% trans "Автошкола" %}{% endblock %}
+{% block title %}{% trans "Управление занятиями" %} - {% trans "Школа" %}{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
@@ -31,9 +31,7 @@
                         <select class="form-select" name="status" id="status">
                             <option value="">{% trans "Все статусы" %}</option>
                             {% for value, label in status_choices %}
-                            <option value="{{ value }}" {% if current_filters.status == value %}selected{% endif %}>
-                                {{ label }}
-                            </option>
+                            <option value="{{ value }}"{% if current_filters.status == value %} selected{% endif %}>{{ label }}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -52,9 +50,7 @@
                         <select class="form-select" name="student" id="student">
                             <option value="">{% trans "Все ученики" %}</option>
                             {% for student in students %}
-                            <option value="{{ student.id }}" {% if current_filters.student == student.id|stringformat:"s" %}selected{% endif %}>
-                                {{ student.full_name }}
-                            </option>
+                            <option value="{{ student.id }}"{% if current_filters.student == student.id|stringformat:"s" %} selected{% endif %}>{{ student.full_name }}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -122,11 +118,13 @@
                                 <td>{{ lesson.student.full_name }}</td>
                                 <td>{{ lesson.subject.name }}</td>
                                 <td>
-                                    <span class="badge bg-{% if lesson.status == 'completed' %}success{% elif lesson.status == 'scheduled' %}primary{% else %}secondary{% endif %}">
+                                    {% if lesson.status != 'scheduled' %}
+                                    <span class="badge bg-{% if lesson.status == 'completed' %}success{% elif lesson.status == 'rescheduled' %}warning{% elif lesson.status == 'cancelled' %}danger{% else %}secondary{% endif %}">
                                         {{ lesson.get_status_display }}
                                     </span>
+                                    {% endif %}
                                 </td>
-                                <td>
+                                        <button class="btn btn-outline-info" onclick="showLessonDetails('{{ lesson.id }}')">
                                     <div class="btn-group btn-group-sm" role="group">
                                         <button class="btn btn-outline-info" onclick="showLessonDetails({{ lesson.id }})">
                                             <i class="bi bi-eye"></i>

@@ -2,7 +2,7 @@
 {% load i18n %}
 {% load notification_extras %}
 
-{% block title %}{% trans "Уведомления" %} - {% trans "Автошкола" %}{% endblock %}
+{% block title %}{% trans "Уведомления" %} - {% trans "Школа" %}{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
@@ -28,11 +28,12 @@
                      id="notification-{{ notification.id }}">
                     <div class="p-3 border-bottom">
                         <div class="d-flex justify-content-between align-items-start mb-2">
-                            <div class="notification-meta">
+                            <div class="notification-meta d-flex align-items-center">
                                 <span class="badge bg-{{ notification.notification_type|notification_type_color }} me-2">
                                     <i class="bi bi-{{ notification.notification_type|notification_type_icon }}"></i>
                                 </span>
-                                <small class="text-muted">{{ notification.sent_at|date:"d.m.Y H:i" }}</small>
+                                <!-- Клиентское форматирование: data-utc-дата -->
+                                <small class="text-muted notif-time" data-utc-dt="{{ notification.sent_at|date:'c' }}">...</small>
                             </div>
                             {% if not notification.is_read %}
                             <button class="btn btn-sm btn-outline-primary" 
@@ -123,104 +124,62 @@
 {% endif %}
 
 <style>
-.notification-item-full {
-    transition: all 0.2s ease;
-}
-
-.notification-item-full:hover {
-    background-color: #f8f9fa;
-}
-
-.notification-unread {
-    background-color: #e3f2fd;
-    border-left: 4px solid #2196f3;
-}
-
-.notification-title {
-    color: #333;
-    font-weight: 600;
-}
-
-.notification-message {
-    color: #666;
-    line-height: 1.5;
-}
+.notification-item-full { transition: all 0.2s ease; }
+.notification-item-full:hover { background-color: #f8f9fa; }
+.notification-unread { background-color: #e3f2fd; border-left: 4px solid #2196f3; }
+.notification-title { color: #333; font-weight: 600; }
+.notification-message { color: #666; line-height: 1.5; }
 </style>
 
 <script>
 function markAsRead(notificationId) {
     const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
-    if (!csrfToken) {
-        console.warn('CSRF token not found');
-        return;
-    }
-    
+    if (!csrfToken) return;
     fetch(`/assignments/notifications/${notificationId}/read/`, {
         method: 'POST',
-        headers: {
-            'X-CSRFToken': csrfToken.value,
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            // Update the notification item
-            const notificationElement = document.getElementById(`notification-${notificationId}`);
-            if (notificationElement) {
-                notificationElement.classList.remove('notification-unread');
-                const button = notificationElement.querySelector('button');
-                if (button) {
-                    button.remove();
-                }
+        headers: { 'X-CSRFToken': csrfToken.value }
+    }).then(r=>r.json()).then(d=>{
+        if (d.status === 'success') {
+            const el = document.getElementById(`notification-${notificationId}`);
+            if (el) {
+                el.classList.remove('notification-unread');
+                const btn = el.querySelector('button');
+                if (btn) btn.remove();
             }
         }
-    })
-    .catch(error => {
-        console.error('Error marking notification as read:', error);
     });
 }
-
 function markAllAsRead() {
     const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
-    if (!csrfToken) {
-        console.warn('CSRF token not found');
-        return;
-    }
-    
+    if (!csrfToken) return;
     fetch('/assignments/notifications/mark-all-read/', {
         method: 'POST',
-        headers: {
-            'X-CSRFToken': csrfToken.value,
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            // Remove unread styling from all notifications
-            const unreadNotifications = document.querySelectorAll('.notification-unread');
-            unreadNotifications.forEach(notification => {
-                notification.classList.remove('notification-unread');
-                const button = notification.querySelector('button');
-                if (button) {
-                    button.remove();
-                }
+        headers: { 'X-CSRFToken': csrfToken.value }
+    }).then(r=>r.json()).then(d=>{
+        if (d.status === 'success') {
+            document.querySelectorAll('.notification-unread').forEach(n=>{
+                n.classList.remove('notification-unread');
+                const btn = n.querySelector('button');
+                if (btn) btn.remove();
             });
-            
-            // Hide the "Mark all as read" button
             const markAllButton = document.querySelector('[onclick="markAllAsRead()"]');
-            if (markAllButton) {
-                markAllButton.style.display = 'none';
-            }
+            if (markAllButton) markAllButton.style.display='none';
         }
-    })
-    .catch(error => {
-        console.error('Error marking all notifications as read:', error);
+    });
+}
+// Клиентская локализация времени
+function localizeNotificationTimes(){
+    const opts = {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'};
+    document.querySelectorAll('.notif-time[data-utc-dt]').forEach(span=>{
+        const iso = span.getAttribute('data-utc-dt');
+        if(!iso) return;
+        const d = new Date(iso);
+        if(!isNaN(d)) span.textContent = d.toLocaleString(undefined, opts);
     });
 }
 
-// Add CSRF token for AJAX requests
-document.addEventListener('DOMContentLoaded', function() {
-    // Create a hidden CSRF token input if it doesn't exist
+document.addEventListener('DOMContentLoaded', ()=>{
+    // Добавляем скрытый CSRF если нет
     if (!document.querySelector('[name=csrfmiddlewaretoken]')) {
         const csrfInput = document.createElement('input');
         csrfInput.type = 'hidden';
@@ -228,6 +187,7 @@ document.addEventListener('DOMContentLoaded', function() {
         csrfInput.value = '{{ csrf_token }}';
         document.body.appendChild(csrfInput);
     }
+    localizeNotificationTimes();
 });
 </script>
 {% endblock %}

@@ -1,0 +1,43 @@
+
+{% extends 'base.html' %}
+{% load i18n %}
+{% block title %}{% trans "Жалобы" %} - {% trans "Школа" %}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+  <h1 class="h2"><i class="bi bi-flag"></i> {% trans "Жалобы" %}</h1>
+</div>
+{% if reports %}
+<div class="table-responsive">
+  <table class="table table-striped table-sm align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>#</th>
+        <th>{% trans "Ученик" %}</th>
+        <th>{% trans "Занятие" %}</th>
+        <th>{% trans "Тип" %}</th>
+        <th>{% trans "Описание" %}</th>
+        <th>{% trans "Дата" %}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in reports %}
+      <tr>
+        <td>{{ forloop.counter }}</td>
+        <td>{{ r.reporter.full_name }}</td>
+        <td>
+          {{ r.lesson.title }}<br>
+          <small class="text-muted">{{ r.lesson.start_time|date:"d.m.Y H:i" }}</small>
+        </td>
+        <td><span class="badge bg-secondary">{{ r.get_problem_type_display }}</span></td>
+        <td style="max-width:320px; white-space:pre-wrap;">{{ r.description }}</td>
+        <td><small>{{ r.created_at|date:"d.m.Y H:i" }}</small></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="alert alert-info">{% trans "Жалоб пока нет" %}</div>
+{% endif %}
+{% endblock %}
+

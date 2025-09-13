@@ -151,36 +151,46 @@ document.addEventListener('DOMContentLoaded', function() {
     // Handle multiple file selection
     const fileInput = document.getElementById('assignment_files');
     const filesList = document.getElementById('selected-files-list');
-    let selectedFiles = [];
-    
+    let allSelectedFiles = []; // Массив для хранения всех выбранных файлов
+
     fileInput.addEventListener('change', function(e) {
-        const files = Array.from(e.target.files);
-        
-        files.forEach(file => {
-            // Check if file already selected
-            const existingIndex = selectedFiles.findIndex(f => f.name === file.name && f.size === file.size);
+        const newFiles = Array.from(e.target.files);
+
+        // Добавляем только новые файлы, избегая дублирования
+        newFiles.forEach(file => {
+            const existingIndex = allSelectedFiles.findIndex(f =>
+                f.name === file.name && f.size === file.size && f.lastModified === file.lastModified
+            );
             if (existingIndex === -1) {
-                selectedFiles.push(file);
-                addFileToList(file);
+                allSelectedFiles.push(file);
             }
         });
         
         updateFilesList();
-        e.target.value = ''; // Clear input to allow selecting same files again
+        updateInputFiles();
     });
-    
-    function addFileToList(file) {
-        updateFilesList();
+
+    function updateInputFiles() {
+        // Обновляем input element с помощью DataTransfer
+        try {
+            const dt = new DataTransfer();
+            allSelectedFiles.forEach(file => {
+                dt.items.add(file);
+            });
+            fileInput.files = dt.files;
+        } catch (error) {
+            console.log('DataTransfer не поддерживается в этом браузере');
+        }
     }
     
     function updateFilesList() {
         filesList.innerHTML = '';
         
-        if (selectedFiles.length > 0) {
+        if (allSelectedFiles.length > 0) {
             const filesContainer = document.createElement('div');
             filesContainer.className = 'selected-files-container';
             
-            selectedFiles.forEach((file, index) => {
+            allSelectedFiles.forEach((file, index) => {
                 const fileItem = document.createElement('div');
                 fileItem.className = 'selected-file-item d-flex justify-content-between align-items-center mb-2 p-2 border rounded bg-light';
                 fileItem.innerHTML = `
@@ -197,12 +207,19 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             
             filesList.appendChild(filesContainer);
+
+            // Показываем количество выбранных файлов
+            const countInfo = document.createElement('div');
+            countInfo.className = 'mt-2 text-muted';
+            countInfo.innerHTML = `<small>Выбрано файлов: ${allSelectedFiles.length}</small>`;
+            filesList.appendChild(countInfo);
         }
     }
     
     window.removeFile = function(index) {
-        selectedFiles.splice(index, 1);
+        allSelectedFiles.splice(index, 1);
         updateFilesList();
+        updateInputFiles();
     };
     
     function formatFileSize(bytes) {
@@ -215,70 +232,11 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Handle form submission
     const form = document.querySelector('form');
-    form.addEventListener('submit', function(e) {
-        if (selectedFiles.length > 0) {
-            // Create a new FormData and add selected files
-            const formData = new FormData(form);
-            
-            // Remove the original file field
-            formData.delete('assignment_file');
-            
-            // Add selected files
-            selectedFiles.forEach((file, index) => {
-                formData.append('assignment_files', file);
-            });
-            
-            e.preventDefault();
-            
-            // Submit using fetch
-            fetch(form.action, {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-CSRFToken': getCookie('csrftoken'),
-                }
-            })
-            .then(response => {
-                if (response.ok) {
-                    return response.text();
-                } else {
-                    throw new Error('Form submission failed');
-                }
-            })
-            .then(html => {
-                // Check if response contains form errors by looking for error indicators
-                if (html.includes('alert-danger') || html.includes('text-danger')) {
-                    // Replace page content with response to show errors
-                    document.open();
-                    document.write(html);
-                    document.close();
-                } else {
-                    // Success - redirect to assignment list
-                    window.location.href = "{% url 'assignments:assignment_list' %}";
-                }
-            })
-            .catch(error => {
-                // Handle fetch errors
-                console.error('Error:', error);
-                alert('{% trans "Произошла ошибка при создании задания. Пожалуйста, попробуйте еще раз." %}');
-            });
-        }
-        // If no files selected, let form submit normally
-    });
-    
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
-            }
-        }
-        return cookieValue;
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            console.log('Отправка формы с файлами:', fileInput.files.length);
+            // Форма отправляется стандартным способом Django
+        });
     }
 });
 </script>
