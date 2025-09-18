@@ -14,3 +14,4 @@ django-filter>=23.0,<24.0
 # Если используете внешние HTTP-запросы:
 requests>=2.31,<3.0
 whitenoise>=6.0,<7.0
+django-cors-headers>=3.14,<5
