@@ -48,8 +48,8 @@ class AssignmentForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         
         # Filter students
-        self.fields['student'].queryset = User.objects.filter(role=User.UserRole.STUDENT)
-        
+        self.fields['student'].queryset = User.objects.filter(role=User.UserRole.STUDENT, is_active=True)
+
         # If editing existing assignment, set the days based on current due_date
         if self.instance and self.instance.pk and self.instance.due_date:
             current_time = timezone.now()

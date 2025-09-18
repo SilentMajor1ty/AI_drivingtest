@@ -4,8 +4,10 @@
 {% block title %}{% trans "Календарь" %} - {% trans "Школа" %}{% endblock %}
 
 {% block content %}
+
+
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-    <h1 class="h2"><i class="bi bi-calendar3"></i> {% trans "Календарь" %}</h1>
+    <h1 class="h2">{% trans "Календарь" %}</h1>
     <div class="btn-toolbar mb-2 mb-md-0">
         {% if user.is_methodist %}
         <div class="btn-group me-2">
@@ -58,7 +60,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Детали занятий</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{% trans 'Закрыть' %}"></button>
             </div>
             <div class="modal-body" id="lessonDetailsContent">
                 <!-- Content will be loaded here -->
@@ -73,7 +75,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Сообщить о проблеме</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{% trans 'Закрыть' %}"></button>
             </div>
             <div class="modal-body">
                 <form id="problemReportForm">
@@ -109,7 +111,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Оценить урок</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{% trans 'Закрыть' %}"></button>
             </div>
             <div class="modal-body">
                 <input type="hidden" id="completion-lesson-id">
@@ -163,10 +165,11 @@
     min-height: 120px;
     border-right: 1px solid #dee2e6;
     border-bottom: 1px solid #dee2e6;
-    padding: 5px;
+    padding: 5px; /* фиксированный padding, будет компенсироваться у .lesson-item */
     position: relative;
     cursor: pointer;
     transition: background-color 0.2s;
+    overflow: visible; /* показываем выступающие части, карточки подогнаны по отступам */
 }
 
 .calendar-day:hover {
@@ -178,9 +181,11 @@
     color: #6c757d;
 }
 
+/* Не меняем размер контейнера при выделении "сегодня" — используем outline вместо border */
 .calendar-day.today {
     background-color: #e7f3ff;
-    border: 2px solid #0d6efd;
+    outline: 2px solid #0d6efd;
+    outline-offset: -2px;
 }
 
 .calendar-day.has-lessons {
@@ -195,17 +200,43 @@
     font-size: 14px;
 }
 
+/* карточка занятия: растягиваем по всей ширине ячейки, компенсируя padding календарной ячейки */
 .lesson-item {
-    background-color: #0d6efd;
-    color: white;
-    padding: 2px 5px;
-    margin: 2px 0;
-    border-radius: 3px;
-    font-size: 11px;
+    /* базовый стиль, цвет задаётся в JS */
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    /* делаем ширину с учётом padding ячейки, без выхода за её пределы */
+    width: calc(100% - 10px); /* padding 5px слева и справа у .calendar-day */
+    margin: 4px 6px;         /* немного больше горизонтального inset чтобы не упираться в сетку */
+    box-sizing: border-box;
+
+    background-color: var(--lesson-bg, #0d6efd);
+    color: var(--lesson-fg, #fff);
+    padding: 4px 6px;
+    border-radius: 8px;
+    background-clip: padding-box;
+    box-shadow: 0 1px 4px rgba(16,24,40,0.04);
+    font-size: 12px;
     cursor: pointer;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    z-index: 5; /* ниже, чем линия текущего времени */
+}
+
+/* декоративная полоска слева без изменения ширины карточки */
+.lesson-item::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    border-radius: 8px 0 0 8px;
+    background: rgba(0,0,0,0.06);
 }
 
 .lesson-item:hover {
@@ -229,6 +260,17 @@
     opacity: 0.9;
 }
 
+/* Линия текущего времени — рисуется поверх карточек */
+.current-time-line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: #ff4d4f;
+    z-index: 50; /* выше, чем .lesson-item */
+    pointer-events: none;
+}
+
 @media (max-width: 768px) {
     .calendar-day {
         min-height: 80px;
@@ -246,6 +288,51 @@
 </style>
 
 <script>
+// Color utilities for calendar lessons
+const LESSON_COLOR_PALETTE = [
+    '#0d6efd', // blue
+    '#6f42c1', // purple
+    '#198754', // green
+    '#fd7e14', // orange
+    '#dc3545', // red
+    '#0dcaf0', // cyan
+    '#6610f2', // indigo
+    '#e83e8c', // pink
+    '#20c997', // teal
+    '#ffc107'  // yellow
+];
+
+function hashStringToIndex(s, len) {
+    let h = 0;
+    for (let i = 0; i < s.length; i++) {
+        h = ((h << 5) - h) + s.charCodeAt(i);
+        h |= 0;
+    }
+    return Math.abs(h) % len;
+}
+
+function colorForSubject(subject) {
+    if (!subject) return LESSON_COLOR_PALETTE[0];
+    const idx = hashStringToIndex(subject.toLowerCase(), LESSON_COLOR_PALETTE.length);
+    return LESSON_COLOR_PALETTE[idx];
+}
+
+function hexToRgb(hex) {
+    const h = hex.replace('#','');
+    const bigint = parseInt(h, 16);
+    if (h.length === 6) {
+        return [(bigint >> 16) & 255, (bigint >> 8) & 255, bigint & 255];
+    }
+    // fallback
+    return [13,110,253];
+}
+
+function contrastColor(hex) {
+    const [r,g,b] = hexToRgb(hex);
+    const yiq = (r*299 + g*587 + b*114) / 1000;
+    return yiq >= 128 ? '#000' : '#fff';
+}
+
 let currentDate = new Date();
 let lessonsData = [];
 
@@ -266,9 +353,19 @@ function loadLessons() {
         .catch(error => {
             console.error('Error loading lessons:', error);
             // Fallback: use server-rendered lessons data
-            lessonsData = {{ lessons_json|safe }};
+            try {
+                lessonsData = JSON.parse(document.getElementById('lessons-json').textContent);
+            } catch (e) {
+                lessonsData = [];
+            }
             renderCalendar();
         });
+}
+
+// Add a small escaping helper to prevent XSS when inserting server-provided text into innerHTML
+function escapeHTML(s){
+    if (!s && s !== 0) return '';
+    return String(s).replace(/[&<>"']/g, function(m){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"})[m]; });
 }
 
 function renderCalendar() {
@@ -277,7 +374,7 @@ function renderCalendar() {
     
     // Update header
     document.getElementById('currentMonthYear').textContent = `${monthNames[month]} ${year}`;
-    
+
     // Get first day of month and number of days
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
@@ -333,21 +430,45 @@ function renderCalendar() {
                 dayLessons.slice(0, 3).forEach(lesson => {
                     const lessonElement = document.createElement('div');
                     lessonElement.className = `lesson-item ${lesson.status}`;
-                    
+
                     const lessonTime = new Date(lesson.start_time);
-                    lessonElement.innerHTML = `
-                        <div class="lesson-time">${lessonTime.getHours().toString().padStart(2, '0')}:${lessonTime.getMinutes().toString().padStart(2, '0')}</div>
-                        <div class="lesson-subject">${lesson.subject}</div>
-                    `;
-                    
+                    // Use text nodes / escaped values to avoid inserting untrusted HTML
+                    const timeDiv = document.createElement('div');
+                    timeDiv.className = 'lesson-time';
+                    timeDiv.textContent = `${lessonTime.getHours().toString().padStart(2, '0')}:${lessonTime.getMinutes().toString().padStart(2, '0')}`;
+
+                    const subjDiv = document.createElement('div');
+                    subjDiv.className = 'lesson-subject';
+                    subjDiv.textContent = lesson.subject || '';
+
+                    // Compose element safely
+                    lessonElement.appendChild(timeDiv);
+                    lessonElement.appendChild(subjDiv);
+
+                    // Apply simple color per subject using existing helper functions
+                    try {
+                        const bg = colorForSubject(lesson.subject || '');
+                        const fg = contrastColor(bg);
+                        lessonElement.style.background = bg;
+                        lessonElement.style.color = fg;
+                        lessonElement.style.setProperty('--accent', bg);
+                        lessonElement.style.borderLeft = '0';
+                        lessonElement.style.boxSizing = 'border-box';
+                        lessonElement.style.width = 'calc(100% - 10px)';
+                        lessonElement.style.margin = '4px 5px';
+                        lessonElement.style.zIndex = '5';
+                    } catch (e) {
+                        // ignore coloring errors
+                    }
+
                     lessonElement.onclick = (e) => {
                         e.stopPropagation();
                         showLessonDetails(lesson.id);
                     };
-                    
+
                     dayElement.appendChild(lessonElement);
                 });
-                
+
                 // Show "more" indicator if there are more than 3 lessons
                 if (dayLessons.length > 3) {
                     const moreElement = document.createElement('div');
@@ -390,8 +511,8 @@ function showDayLessons(date, lessons) {
         day: 'numeric'
     });
     
-    let content = `<h5>${dateStr}</h5>`;
-    
+    let content = `<h5>${escapeHTML(dateStr)}</h5>`;
+
     if (lessons.length === 0) {
         content += '<p class="text-muted">На этот день занятий не запланировано</p>';
     } else {
@@ -399,31 +520,29 @@ function showDayLessons(date, lessons) {
         lessons.forEach(lesson => {
             const startTime = new Date(lesson.start_time);
             const endTime = new Date(lesson.end_time);
-            
+            const title = escapeHTML(lesson.title || '');
+            const subject = escapeHTML(lesson.subject || '');
+            const teacher = escapeHTML(lesson.teacher || '');
+            const student = escapeHTML(lesson.student || '');
+            const description = escapeHTML(lesson.description || '');
+            const zoomHref = lesson.zoom_link ? encodeURI(lesson.zoom_link) : '';
+
             content += `
                 <div class="list-group-item">
                     <div class="d-flex w-100 justify-content-between align-items-start">
                         <div>
-                            <h6 class="mb-1">${lesson.title}</h6>
-                            <p class="mb-1"><strong>Предмет:</strong> ${lesson.subject}</p>
+                            <h6 class="mb-1">${title}</h6>
+                            <p class="mb-1"><strong>Предмет:</strong> ${subject}</p>
                             <p class="mb-1"><strong>Время:</strong> ${startTime.getHours().toString().padStart(2, '0')}:${startTime.getMinutes().toString().padStart(2, '0')} - ${endTime.getHours().toString().padStart(2, '0')}:${endTime.getMinutes().toString().padStart(2, '0')}</p>
-                            {% if user.is_student %}
-                            <p class="mb-1"><strong>Преподаватель:</strong> ${lesson.teacher}</p>
-                            {% elif user.is_teacher %}
-                            <p class="mb-1"><strong>Ученик:</strong> ${lesson.student}</p>
-                            {% else %}
-                            <p class="mb-1"><strong>Преподаvatель:</strong> ${lesson.teacher}</p>
-                            <p class="mb-1"><strong>Ученик:</strong> ${lesson.student}</p>
-                            {% endif %}
-                            ${lesson.description ? `<p class="mb-1"><strong>Описание:</strong> ${lesson.description}</p>` : ''}
+                            ${lesson.teacher ? `<p class="mb-1"><strong>Преподаватель:</strong> ${teacher}</p>` : ''}
+                            ${lesson.student ? `<p class="mb-1"><strong>Ученик:</strong> ${student}</p>` : ''}
+                            ${description ? `<p class="mb-1"><strong>Описание:</strong> ${description}</p>` : ''}
                         </div>
-                        <span class="badge bg-${lesson.status === 'completed' ? 'success' : lesson.status === 'scheduled' ? 'primary' : 'secondary'}">${lesson.status_display}</span>
+                        <span class="badge bg-${lesson.status === 'completed' ? 'success' : lesson.status === 'scheduled' ? 'primary' : 'secondary'}">${escapeHTML(lesson.status_display || lesson.status)}</span>
                     </div>
-                    ${lesson.zoom_link ? `
+                    ${zoomHref ? `
                     <div class="mt-2">
-                        <a href="${lesson.zoom_link}" target="_blank" 
-                           class="btn btn-sm btn-success me-2"
-                           onclick="handleVideoCall(${lesson.id}, '${lesson.zoom_link}')">
+                        <a href="${zoomHref}" target="_blank" class="btn btn-sm btn-success me-2">
                             <i class="bi bi-camera-video"></i> Подключиться
                         </a>
                     </div>` : ''}
@@ -441,71 +560,43 @@ function showLessonDetails(lessonId) {
     fetch(`/scheduling/lessons/${lessonId}/details/`)
         .then(response => response.json())
         .then(data => {
+            // Build content safely using escaped values
+            const title = escapeHTML(data.title || '');
+            const subject = escapeHTML(data.subject || '');
+            const date = escapeHTML(data.date || '');
+            const start_time = escapeHTML(data.start_time || '');
+            const end_time = escapeHTML(data.end_time || '');
+            const teacher = escapeHTML(data.teacher || '');
+            const student = escapeHTML(data.student || '');
+            const description = escapeHTML(data.description || '');
+            const zoomHref = data.zoom_link ? encodeURI(data.zoom_link) : '';
+
             let content = `
                 <div class="row">
                     <div class="col-md-6">
                         <h6>Основная информация</h6>
-                        <p><strong>Название:</strong> ${data.title}</p>
-                        <p><strong>Предмет:</strong> ${data.subject}</p>
-                        <p><strong>Дата:</strong> ${data.date}</p>
-                        <p><strong>Время:</strong> ${data.start_time} - ${data.end_time}</p>
-                        <p><strong>Статус:</strong> <span class="badge bg-primary">${data.status}</span></p>
+                        <p><strong>Название:</strong> ${title}</p>
+                        <p><strong>Предмет:</strong> ${subject}</p>
+                        <p><strong>Дата:</strong> ${date}</p>
+                        <p><strong>Время:</strong> ${start_time} - ${end_time}</p>
+                        <p><strong>Статус:</strong> <span class="badge bg-primary">${escapeHTML(data.status || '')}</span></p>
                     </div>
                     <div class="col-md-6">
                         <h6>Участники</h6>
-                        <p><strong>Преподаватель:</strong> ${data.teacher}</p>
-                        <p><strong>Ученик:</strong> ${data.student}</p>
-                        ${data.zoom_link ? `
-                        <p><strong>Ссылка:</strong> 
-                            <a href="${data.zoom_link}" target="_blank" 
-                               class="btn btn-sm btn-success"
-                               onclick="handleVideoCall(${lessonId}, '${data.zoom_link}')">
+                        ${teacher ? `<p><strong>Преподаватель:</strong> ${teacher}</p>` : ''}
+                        ${student ? `<p><strong>Ученик:</strong> ${student}</p>` : ''}
+                        ${zoomHref ? `
+                        <p><strong>Ссылка:</strong>
+                            <a href="${zoomHref}" target="_blank"
+                               class="btn btn-sm btn-success">
                                 <i class="bi bi-camera-video"></i> Подключиться
                             </a>
-                            {% if user.is_student %}
-                            <button class="btn btn-sm btn-outline-warning ms-2"
-                                    onclick="showProblemReport(${lessonId})">
-                                <i class="bi bi-exclamation-triangle"></i> Сообщить о проблеме
-                            </button>
-                            {% endif %}
                         </p>` : ''}
-                        
-                        {% if user.is_teacher and data.teacher_materials %}
-                        <p><strong>Материалы для преподавателя:</strong> 
-                            <a href="${data.teacher_materials}" class="btn btn-sm btn-outline-info" target="_blank">
-                                <i class="bi bi-download"></i> Скачать
-                            </a>
-                        </p>
-                        {% endif %}
                     </div>
                 </div>
-                ${data.description ? `<div class="mt-3"><h6>Описание</h6><p>${data.description}</p></div>` : ''}
-                
-                <!-- Lesson completion buttons -->
-                ${data.can_be_confirmed && !data.is_completed ? `
-                    <div class="mt-3">
-                        <h6>Подтверждение проведения урока</h6>
-                        <div class="d-flex gap-2">
-                            <button class="btn btn-success btn-sm" onclick="confirmLessonCompletion(${lessonId}, true)">
-                                <i class="bi bi-check-circle"></i> Урок состоялся
-                            </button>
-                            <button class="btn btn-outline-warning btn-sm" onclick="showProblemReport(${lessonId})">
-                                <i class="bi bi-exclamation-triangle"></i> Сообщить о проблеме
-                            </button>
-                        </div>
-                    </div>
-                ` : ''}
-                
-                ${data.is_completed ? `
-                    <div class="mt-3">
-                        <div class="alert alert-success">
-                            <i class="bi bi-check-circle-fill me-2"></i>
-                            Урок завершен и подтвержден
-                        </div>
-                    </div>
-                ` : ''}
+                ${description ? `<div class="mt-3"><h6>Описание</h6><p>${description}</p></div>` : ''}
             `;
-            
+
             document.getElementById('lessonDetailsContent').innerHTML = content;
             new bootstrap.Modal(document.getElementById('lessonDetailsModal')).show();
         })

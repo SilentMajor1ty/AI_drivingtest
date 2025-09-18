@@ -6,6 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}{% trans "Школа" %}{% endblock %}</title>
 
+    <!-- Favicon -->
+    <link rel="icon" href="{% static 'logo.png' %}" type="image/png">
+
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
@@ -15,111 +18,152 @@
             min-height: 100vh;
             background-color: #f8f9fa;
         }
-        
-        .navbar-brand {
-            font-weight: bold;
+        /* Нав-линки: активный пункт и иконки */
+        .sidebar .nav-link { display:flex; align-items:center; gap:.5rem; padding:.5rem .75rem; border-left:3px solid transparent; color:#2b2f33; }
+        .sidebar .nav-link:hover { background:#f2f6ff; border-left-color:#cfe2ff; color:#0d6efd; }
+        .sidebar .nav-link.active { background:#e9f2ff; border-left-color:#0d6efd; color:#0a58ca; font-weight:600; }
+        .sidebar .nav-link .nav-icon { width:20px; height:20px; object-fit:contain; filter:saturate(.85) brightness(.95); opacity:.9; }
+        .sidebar .nav-link.active .nav-icon { filter:none; opacity:1; }
+        /* Межсекционный отступ */
+        .sidebar .nav-item.nav-section-gap { margin-top: 1.25rem; }
+
+        /* Academic navbar look (not used on dark) */
+        .navbar-academic {
+            background: linear-gradient(180deg, #f8fafc 0%, #eef3f9 100%);
+            border-bottom: 1px solid #e6ebf2;
         }
-        
-        .card-stats {
-            border-left: 4px solid #007bff;
+        .navbar-academic .navbar-brand {
+            font-weight: 600;
+            font-family: Georgia, "Times New Roman", serif;
+            letter-spacing: .2px;
         }
-        
-        .overdue {
-            color: #dc3545;
+        .navbar-academic .navbar-brand img { /* more spacing between logo and title */
+            margin-right: 1.2rem !important; /* slightly larger gap */
         }
-        
-        .due-soon {
-            color: #ffc107;
+        /* Ensure white brand on dark navbar */
+        .navbar-dark .navbar-brand { color:#fff !important; }
+        .navbar-dark .navbar-brand:hover { color:#fff !important; opacity:.95; }
+        /* Slightly larger brand text */
+        .navbar .navbar-brand { font-size: 1.45rem; }
+        @media (max-width: 576px) { .navbar .navbar-brand { font-size: 1.25rem; } }
+
+        /* Unified navbar palette + hovers (light navbar only) */
+        :root { --nav-accent: #0d6efd; --nav-soft: rgba(13,110,253,.06); --nav-soft-border: rgba(13,110,253,.12); }
+        /* Brand color overrides for buttons - slightly deeper/more saturated blue */
+        :root { --brand-primary: #0b5ed7; --brand-primary-dark: #0a58ca; }
+        /* Outline primary: use brand tint and nicer hover fill */
+        .btn-outline-primary { color: var(--brand-primary) !important; border-color: var(--brand-primary) !important; background: transparent !important; }
+        .btn-outline-primary:hover, .btn-outline-primary:focus {
+            color: #fff !important;
+            background: linear-gradient(180deg, var(--brand-primary), var(--brand-primary-dark)) !important;
+            border-color: var(--brand-primary-dark) !important;
+            box-shadow: 0 6px 18px rgba(11,92,183,0.12);
         }
-        
-        .lesson-card {
-            border-left: 4px solid #28a745;
-        }
-        
+        /* Primary (solid) buttons use the same brand) */
+        .btn-primary { background-color: var(--brand-primary) !important; border-color: var(--brand-primary) !important; }
+        .btn-primary:hover, .btn-primary:focus { background-color: var(--brand-primary-dark) !important; border-color: var(--brand-primary-dark) !important; }
+        .navbar-academic .nav-link { color:#2b2f33; border-radius: 8px; }
+        .navbar-academic .nav-link:hover { background: var(--nav-soft); color: var(--nav-accent); }
+        .navbar-academic .navbar-toggler { border-color: #d5dbe6; }
+
+        .card-stats { border-left: 4px solid #007bff; }
+        .overdue { color: #dc3545; }
+        .due-soon { color: #ffc107; }
+        .lesson-card { border-left: 4px solid #28a745; }
+
+        /* Notifications: dropdown and dot badge */
         .notification-badge {
             position: relative;
         }
-        
-        /* Improved notification dropdown styling */
-        .notification-dropdown {
-            min-width: 380px;
-            max-width: 400px;
-            max-height: 400px;
-            overflow-y: auto;
-        }
-        
-        .notification-item {
-            border-bottom: 1px solid #eee;
-            padding: 0.75rem;
-            cursor: pointer;
-            transition: background-color 0.2s ease;
-        }
-        
-        .notification-item:hover {
-            background-color: #f8f9fa;
-        }
-        
-        .notification-item:last-child {
-            border-bottom: none;
-        }
-        
-        .notification-unread {
-            background-color: #e3f2fd;
-            border-left: 3px solid #2196f3;
-        }
-        
-        .notification-meta {
-            display: flex;
-            justify-content: between;
-            align-items: center;
-            margin-bottom: 0.25rem;
-        }
-        
-        .notification-title {
-            font-weight: 600;
-            margin-bottom: 0.25rem;
-            color: #333;
-            font-size: 0.9rem;
-        }
-        
-        .notification-message {
-            color: #666;
-            font-size: 0.85rem;
-            line-height: 1.4;
-            word-wrap: break-word;
-            overflow-wrap: break-word;
-        }
-        
-        .notification-time {
-            color: #999;
-            font-size: 0.75rem;
-        }
-        
-        .notification-unread-dot {
-            width: 8px;
-            height: 8px;
-            background-color: #2196f3;
+        .notification-dot {
+            position: absolute;
+            top: -2px;
+            right: 14px;
+            width: 10px;
+            height: 10px;
+            background: red;
             border-radius: 50%;
-            margin-left: auto;
+            display: inline-block;
+            z-index: 2;
         }
 
-        /* Feedback banner */
-        #feedbackBanner {
-            z-index: 1060;
+        .notification-dropdown {
+            min-width: 380px; max-width: 400px; max-height: 400px; overflow-y: auto; z-index:1080;
         }
-        .stars .bi {
-            font-size: 1.5rem;
-            cursor: pointer;
+        .notification-item {
+            display: flex; align-items: flex-start; gap: .75rem;
+            background: #fff; border: 1px solid #eef2f7; border-radius: 10px;
+            padding: .6rem .7rem; margin: .45rem .25rem; cursor: pointer;
+            transition: background-color .15s ease, box-shadow .15s ease, border-color .15s ease;
         }
-        .stars .bi-star-fill { color: #f0ad4e; }
+        .notification-item:hover { background-color: #f8fbff; box-shadow: 0 2px 10px rgba(13,110,253,.08); border-color: #e2ebf9; }
+        .notification-item:last-child { margin-bottom: .35rem; }
+        .notification-unread { background-color: #eaf3ff; border-left: 3px solid #69a7ff; }
+        .notification-icon {
+            width: 28px; height: 28px; border-radius: 50%;
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 16px; flex: 0 0 auto;
+        }
+        .ni-default { background:#eef2f7; color:#6c757d; }
+        .ni-info { background:#e9f5ff; color:#0d6efd; }
+        .ni-success { background:#e8f7ef; color:#198754; }
+        .ni-warning { background:#fff4e5; color:#d9730d; }
+        .ni-danger { background:#ffe9ec; color:#dc3545; }
+        .notification-content { flex: 1 1 auto; min-width: 0; }
+        .notification-title { font-weight:600; margin-bottom:.15rem; color:#333; font-size:.9rem; }
+        .notification-message { color:#56606b; font-size:.86rem; line-height:1.35; word-wrap:break-word; overflow-wrap:break-word; }
+        .notification-meta { display:flex; justify-content:space-between; align-items:center; margin-bottom:.15rem; }
+        .notification-time { color:#8a97a6; font-size:.75rem; margin-left:.5rem; white-space:nowrap; }
+        @media (max-width: 420px){
+            .notification-dropdown { min-width: 310px; }
+            .notification-message { font-size:.84rem; }
+            .notification-icon { width:26px; height:26px; font-size:15px; }
+        }
+
+        /* Dropdown animation */
+        .dropdown-menu.fade-down { transform: translateY(8px); opacity:0; transition: transform .15s ease, opacity .15s ease; transform-origin: top right; }
+        .dropdown-menu.fade-down.show { transform: translateY(0); opacity:1; }
+
+        /* Убрали круг у логотипа в навбаре, возвращён обычный логотип */
+
+        /* Harmonized profile link sizing */
+        :root { --nav-avatar-size: 20px; --dropdown-avatar-size: 24px; --nav-bell-size: 17px; }
+        .navbar .nav-link.profile-link { font-size: .95rem; font-weight: 500; padding-top: .5rem; padding-bottom: .5rem; }
+        .navbar .nav-link.profile-link .avatar-icon { width: var(--nav-avatar-size); height: var(--nav-avatar-size); border-radius:50%; box-shadow: 0 0 0 2px rgba(255,255,255,.15); }
+        .dropdown-menu .avatar-icon { width: var(--dropdown-avatar-size); height: var(--dropdown-avatar-size); }
+        .navbar .profile-name { max-width: 18ch; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        /* Bell icon sizing and notification dot alignment */
+        .navbar #notificationsDropdown .bi-bell { font-size: var(--nav-bell-size); line-height: 1; vertical-align: -1px; }
+        /* Сдвинута ниже и левее: увеличено top (вниз) и right (влево) */
+        .notification-badge .notification-dot { top: 10px; right: 8px; width: 7px; height: 7px; z-index: 2; }
+        @media (max-width: 576px) {
+            :root { --nav-avatar-size: 18px; --nav-bell-size: 16px; }
+            .navbar .profile-name { max-width: 14ch; }
+        }
+        /* Hide caret for bell */
+        #notificationsDropdown.dropdown-toggle::after { display:none !important; }
+        .notification-badge.dropdown-toggle::after { display:none !important; }
+        /* Icon inside role badge */
+        .badge-soft-info i { font-size: .9em; margin-right: .25rem; vertical-align: -1px; }
+        /* Ensure role badge is readable in dropdown */
+        .dropdown-menu .badge.badge-soft-info,
+        .navbar-dark .dropdown-menu .badge.badge-soft-info { background-color: #e9f5ff !important; color: #0d6efd !important; border: 1px solid #cfe7ff; }
+        /* Notification header actions */
+        .notif-actions { gap: .5rem !important; }
+        .notif-action { display:inline-flex; align-items:center; padding:.125rem .35rem; border-radius:6px; color:#0d6efd; background:transparent; border:0; text-decoration:none; font-weight:500; line-height:1.2; cursor:pointer; }
+        .notif-action:hover { background: var(--nav-soft); color:#0a58ca; text-decoration:none; }
+        .notif-action:focus-visible { outline:none; box-shadow: 0 0 0 2px rgba(13,110,253,.25); }
+        @media (max-width: 576px){ .notif-action { padding:.1rem .3rem; } }
     </style>
 </head>
 <body>
     {% if user.is_authenticated %}
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container-fluid">
-            <a class="navbar-brand" href="{% url 'accounts:dashboard' %}">
-                <i class="bi bi-mortarboard"></i> {% trans "Школа" %}
+            <a class="navbar-brand d-flex align-items-center" href="{% url 'accounts:dashboard' %}">
+                <!-- Вернули обычное изображение логотипа без окружности -->
+                <img src="{% static 'logo.png' %}" alt="Edison Academy" class="me-2" style="height:28px; width:auto;">
+                {% trans "Edison Academy" %}
             </a>
             
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -128,46 +172,22 @@
             
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'accounts:dashboard' %}">
-                            <i class="bi bi-house"></i> {% trans "Главная" %}
-                        </a>
-                    </li>
-                    
-                    {% if user.is_methodist %}
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'accounts:user_list' %}">
-                            <i class="bi bi-people"></i> {% trans "Пользователи" %}
-                        </a>
-                    </li>
-                    {% endif %}
-                    
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'scheduling:calendar' %}">
-                            <i class="bi bi-calendar3"></i> {% trans "Календарь" %}
-                        </a>
-                    </li>
-                    
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'assignments:assignment_list' %}">
-                            <i class="bi bi-journal-text"></i> {% trans "Задания" %}
-                        </a>
-                    </li>
+                    <!-- Верхняя навигация скрыта по требованию -->
                 </ul>
                 
                 <ul class="navbar-nav">
                     <!-- Notifications dropdown -->
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="notificationsDropdown" role="button" data-bs-toggle="dropdown">
+                        <a class="nav-link dropdown-toggle position-relative notification-badge" href="#" id="notificationsDropdown" role="button" aria-expanded="false">
                             <i class="bi bi-bell"></i>
-                            <span class="badge bg-danger notification-count" id="notificationCount" style="display: none;">0</span>
+                            <span id="notificationCount" class="notification-dot" aria-label="Непрочитанные уведомления"></span>
                         </a>
-                        <div class="dropdown-menu dropdown-menu-end notification-dropdown" id="notificationDropdown">
+                        <div class="dropdown-menu dropdown-menu-end notification-dropdown fade-down" id="notificationDropdown" aria-labelledby="notificationsDropdown">
                             <div class="dropdown-header d-flex justify-content-between align-items-center">
                                 <span><i class="bi bi-bell"></i> Уведомления</span>
-                                <div class="d-flex gap-2 align-items-center">
-                                    <button type="button" class="btn btn-link p-0 small" onclick="markAllNotificationsRead(event)">Отметить все</button>
-                                    <a href="{% url 'assignments:notification_list' %}" class="small text-decoration-none">Все</a>
+                                <div class="notif-actions d-flex align-items-center">
+                                    <button type="button" class="notif-action small" onclick="markAllNotificationsRead(event)">Отметить все</button>
+                                    <a href="{% url 'assignments:notification_list' %}" class="notif-action small">Все</a>
                                 </div>
                             </div>
                             <div id="notificationList">
@@ -175,7 +195,7 @@
                             </div>
                             <div class="dropdown-footer text-center p-2 border-top">
                                 <a href="{% url 'assignments:notification_list' %}" class="small text-decoration-none">
-                                    <i class="bi bi-arrow-right"></i> Показать все уведомления
+                                    Показать все уведомления
                                 </a>
                             </div>
                         </div>
@@ -183,24 +203,27 @@
                     
                     <!-- User profile dropdown -->
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
-                            <i class="bi bi-person-circle"></i> {{ user.full_name }}
-                            <span class="badge bg-info">{{ user.get_role_display }}</span>
+                        <!-- оставляем data-bs-toggle у профиля -->
+                        <a class="nav-link dropdown-toggle d-flex align-items-center gap-2 profile-link" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <span class="profile-name">{{ user.full_name }}</span>
+                            <img class="avatar-icon" src="https://img.icons8.com/fluency/48/user-male-circle.png" alt=""/>
                         </a>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="{% url 'accounts:profile' %}">
-                                <i class="bi bi-person"></i> {% trans "Профиль" %}
-                            </a></li>
+                        <ul class="dropdown-menu dropdown-menu-end fade-down" aria-labelledby="navbarDropdown">
+                            <li class="dropdown-header">
+                                <div class="d-flex align-items-center">
+                                    <img class="avatar-icon me-2" src="https://img.icons8.com/fluency/48/user-male-circle.png" alt=""/>
+                                    <div>
+                                        <div class="fw-semibold">{{ user.full_name }}</div>
+                                        <span class="badge badge-soft-info rounded-pill">{{ user.get_role_display }}</span>
+                                    </div>
+                                </div>
+                            </li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
                                 <i class="bi bi-box-arrow-right"></i> {% trans "Выход" %}
                             </a></li>
                         </ul>
-                        
-                        <!-- Hidden logout form -->
-                        <form id="logout-form" action="{% url 'accounts:logout' %}" method="post" style="display: none;">
-                            {% csrf_token %}
-                        </form>
+                        <form id="logout-form" action="{% url 'accounts:logout' %}" method="post" style="display: none;">{% csrf_token %}</form>
                     </li>
                 </ul>
             </div>
@@ -214,74 +237,65 @@
             <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse">
                 <div class="position-sticky pt-3">
                     <ul class="nav flex-column">
+                        {% with url_name=request.resolver_match.url_name %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'accounts:dashboard' %}">
-                                <i class="bi bi-house"></i> {% trans "Главная" %}
+                            <a class="nav-link {% if url_name == 'dashboard' %}active{% endif %}" href="{% url 'accounts:dashboard' %}">
+                                <img class="nav-icon" src="https://img.icons8.com/fluency/24/home.png" alt="Главная"> {% trans "Главная" %}
                             </a>
                         </li>
                         
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'scheduling:calendar' %}">
-                                <i class="bi bi-calendar3"></i> {% trans "Календарь" %}
+                            <a class="nav-link {% if url_name == 'calendar' %}active{% endif %}" href="{% url 'scheduling:calendar' %}">
+                                <img class="nav-icon" src="https://img.icons8.com/fluency/24/calendar.png" alt="Календарь"> {% trans "Календарь" %}
                             </a>
                         </li>
                         
                         {% if user.is_teacher %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'scheduling:teacher_lesson_management' %}">
-                                <i class="bi bi-book"></i> {% trans "Занятия" %}
+                            <a class="nav-link {% if url_name in 'teacher_lesson_management,lesson_detail,lesson_form,lesson_list' %}active{% endif %}" href="{% url 'scheduling:teacher_lesson_management' %}">
+                                <img class="nav-icon" src="https://img.icons8.com/fluency/24/open-book.png" alt="Занятия"> {% trans "Занятия" %}
                             </a>
                         </li>
-                        {% else %}
+                        {% elif not user.is_methodist %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'scheduling:lesson_list' %}">
-                                <i class="bi bi-book"></i> {% trans "Занятия" %}
+                            <a class="nav-link {% if url_name in 'lesson_list,lesson_detail,lesson_form' %}active{% endif %}" href="{% url 'scheduling:lesson_list' %}">
+                                <img class="nav-icon" src="https://img.icons8.com/fluency/24/open-book.png" alt="Занятия"> {% trans "Занятия" %}
                             </a>
                         </li>
                         {% endif %}
                         
+                        {% if not user.is_methodist %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'assignments:assignment_list' %}">
-                                <i class="bi bi-journal-text"></i> {% trans "Задания" %}
+                            <a class="nav-link {% if url_name == 'assignment_list' %}active{% endif %}" href="{% url 'assignments:assignment_list' %}">
+                                <img class="nav-icon" src="https://img.icons8.com/fluency/24/todo-list.png" alt="Задания"> {% trans "Задания" %}
                             </a>
                         </li>
-                        
+                        {% endif %}
+
                         {% if user.is_methodist %}
-                        <hr>
-                        <h6 class="sidebar-heading text-muted px-3 mt-4 mb-1">
-                            {% trans "АДМИНИСТРИРОВАНИЕ" %}
-                        </h6>
+
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'accounts:user_list' %}">
-                                <i class="bi bi-people"></i> {% trans "Управление пользователями" %}
+                            <a class="nav-link {% if url_name in 'user_list,user_create,user_edit' %}active{% endif %}" href="{% url 'accounts:user_list' %}">
+                                <img class="nav-icon" src="https://img.icons8.com/fluency/24/conference-call.png" alt="Пользователи"> {% trans "Пользователи" %}
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'scheduling:lesson_list' %}">
-                                <i class="bi bi-calendar-check"></i> {% trans "Управление занятиями" %}
+                            <a class="nav-link {% if url_name in 'lesson_list,lesson_detail,lesson_form' %}active{% endif %}" href="{% url 'scheduling:lesson_list' %}">
+                                <img class="nav-icon" src="https://img.icons8.com/fluency/24/open-book.png" alt="Занятия"> {% trans "Занятия" %}
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'scheduling:methodist_weekly_lessons' %}">
-                                <i class="bi bi-calendar-week"></i> {% trans "Недельный отчет" %}
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'assignments:methodist_analytics' %}">
-                                <i class="bi bi-bar-chart"></i> {% trans "Аналитика" %}
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'scheduling:feedback_analytics' %}">
-                                <i class="bi bi-star-half"></i> {% trans "Отзывы по занятиям" %}
+                            <a class="nav-link {% if url_name == 'methodist_analytics' %}active{% endif %}" href="{% url 'assignments:methodist_analytics' %}">
+                                <img class="nav-icon" src="https://img.icons8.com/fluency/24/combo-chart.png" alt="Аналитика"> {% trans "Аналитика" %}
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="/admin/">
-                                <i class="bi bi-gear"></i> {% trans "Панель администратора" %}
+                                <img class="nav-icon" src="https://img.icons8.com/fluency/24/settings.png" alt="Админ-панель"> {% trans "Админ-панель" %}
                             </a>
                         </li>
                         {% endif %}
+                        {% endwith %}
                     </ul>
                 </div>
             </nav>
@@ -316,7 +330,7 @@
         </div>
         <div class="mt-2 d-flex gap-2 justify-content-end">
             <button id="feedbackBannerRate" class="btn btn-sm btn-primary">Оценить</button>
-            <button id="feedbackBannerDismiss" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="alert">Позже</button>
+            <button id="feedbackBannerDismiss" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="alert">Скрыть</button>
         </div>
     </div>
 
@@ -326,7 +340,7 @@
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title" id="lessonFeedbackLabel">Оцените занятие</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{% trans 'Закрыть' %}"></button>
           </div>
           <div class="modal-body">
             <div id="lessonFeedbackInfo" class="mb-2 text-muted"></div>
@@ -349,8 +363,8 @@
                 <div class="form-text">1 — плохо, 10 — отлично</div>
             </div>
             <div class="mb-3">
-                <label for="feedbackComment" class="form-label">Комментарий (по желанию)</label>
-                <textarea id="feedbackComment" class="form-control" rows="3" placeholder="Что понравилось? Что можно улучшить?"></textarea>
+                <label for="feedbackComment" class="form-label">Комментарий</label>
+                <textarea id="feedbackComment" class="form-control" rows="3" placeholder="Что понравилось и что можно было бы улучшить?"></textarea>
             </div>
           </div>
           <div class="modal-footer">
@@ -366,119 +380,12 @@
     
     {% if user.is_authenticated %}
     <script>
-        // Add CSRF token to all AJAX requests
-        function getCSRFToken() {
-            // Prefer cookie csrftoken if present
-            const getCookie = (name) => {
-                const value = `; ${document.cookie}`;
-                const parts = value.split(`; ${name}=`);
-                if (parts.length === 2) return parts.pop().split(';').shift();
-            };
-            const cookieToken = getCookie('csrftoken');
-            if (cookieToken) return cookieToken;
-            const token = document.querySelector('[name=csrfmiddlewaretoken]');
-            return token ? token.value : '';
-        }
-        
-        // Notification functionality
-        let notificationUpdateInterval;
-        
-        function loadNotifications() {
-            fetch('/assignments/api/notifications/')
-                .then(response => response.json())
-                .then(data => {
-                    const notificationList = document.getElementById('notificationList');
-                    const notificationCount = document.getElementById('notificationCount');
-                    
-                    // Update unread count
-                    if (data.unread_count > 0) {
-                        notificationCount.textContent = data.unread_count;
-                        notificationCount.style.display = 'inline-block';
-                    } else {
-                        notificationCount.style.display = 'none';
-                    }
-                    
-                    // Update notification list
-                    if (data.notifications.length === 0) {
-                        notificationList.innerHTML = '<div class="notification-item text-center text-muted py-3">Нет уведомлений</div>';
-                    } else {
-                        notificationList.innerHTML = data.notifications.map(n => {
-                            let formatted;
-                            try {
-                                const d = new Date(n.sent_at_utc || n.sent_at);
-                                formatted = isNaN(d) ? '' : d.toLocaleString(undefined, {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
-                            } catch(e){ formatted=''; }
-                            return `
-                            <div class="notification-item ${!n.is_read ? 'notification-unread' : ''}"
-                                 onclick="markAsRead(${n.id})">
-                                <div class="notification-meta">
-                                    <span class="notification-time" data-utc-dt="${n.sent_at_utc}">${formatted}</span>
-                                    ${!n.is_read ? '<div class="notification-unread-dot"></div>' : ''}
-                                </div>
-                                <div class="notification-title">${n.title}</div>
-                                <div class="notification-message">${n.message}</div>
-                            </div>`;
-                        }).join('');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error loading notifications:', error);
-                    const notificationList = document.getElementById('notificationList');
-                    if (notificationList) {
-                        notificationList.innerHTML = '<div class="notification-item text-center text-muted py-3">Ошибка загрузки уведомлений</div>';
-                    }
-                });
-        }
-        
-        function markAsRead(notificationId) {
-            const csrfToken = getCSRFToken();
-            if (!csrfToken) {
-                console.warn('CSRF token not found');
-                return;
-            }
-            
-            fetch(`/assignments/notifications/${notificationId}/read/`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': csrfToken,
-                }
-            })
-            .then(() => {
-                // Reload notifications to update counts
-                loadNotifications();
-            })
-            .catch(error => {
-                console.error('Error marking notification as read:', error);
-            });
-        }
-        
-        const MARK_ALL_URL = "{% url 'assignments:mark_all_notifications_read' %}";
-        function markAllNotificationsRead(ev){
-            if(ev) ev.preventDefault();
-            const csrf = getCSRFToken();
-            fetch(MARK_ALL_URL, {
-                method:'POST',
-                headers:{'X-CSRFToken': csrf}
-            }).then(r=>r.json()).then(d=>{
-                if(d.status==='success'){
-                    const list = document.getElementById('notificationList');
-                    if(list){
-                        list.querySelectorAll('.notification-item').forEach(el=>{
-                            el.classList.remove('notification-unread');
-                            const dot = el.querySelector('.notification-unread-dot');
-                            if(dot) dot.remove();
-                        });
-                    }
-                    const badge = document.getElementById('notificationCount');
-                    if(badge){ badge.style.display='none'; badge.textContent='0'; }
-                }
-            }).catch(()=>{});
-        }
-
         // --- Feedback UI logic ---
         let currentFeedbackLessonId = null;
         let selectedRating = 0;
         let feedbackModal;
+        let feedbackExpireTimer = null;
+        let hoverRating = 0; // preview rating on hover
 
         function setStars(rating){
             selectedRating = rating;
@@ -495,6 +402,21 @@
             });
             const submitBtn = document.getElementById('feedbackSubmitBtn');
             if (submitBtn) submitBtn.disabled = (selectedRating < 1);
+        }
+
+        // New: paint stars for hover preview without changing selectedRating
+        function paintStars(rating){
+            const stars = document.querySelectorAll('#feedbackStars .bi');
+            stars.forEach(star => {
+                const val = parseInt(star.getAttribute('data-value'));
+                if(val <= rating){
+                    star.classList.remove('bi-star');
+                    star.classList.add('bi-star-fill');
+                } else {
+                    star.classList.remove('bi-star-fill');
+                    star.classList.add('bi-star');
+                }
+            });
         }
 
         function snoozeFeedback(minutes){
@@ -522,6 +444,11 @@
             feedbackModal.show();
         }
 
+        function hideFeedbackBanner(){
+            const banner = document.getElementById('feedbackBanner');
+            if(!banner.classList.contains('d-none')) banner.classList.add('d-none');
+        }
+
         function showFeedbackBanner(lesson){
             const banner = document.getElementById('feedbackBanner');
             const text = document.getElementById('feedbackBannerText');
@@ -529,13 +456,12 @@
             banner.classList.remove('d-none');
             const btnRate = document.getElementById('feedbackBannerRate');
             btnRate.onclick = function(){
-                banner.classList.add('d-none');
+                hideFeedbackBanner();
                 showFeedbackModal(lesson);
             };
             const btnDismiss = document.getElementById('feedbackBannerDismiss');
             btnDismiss.onclick = function(){
-                banner.classList.add('d-none');
-                snoozeFeedback(30); // мягко отложим на 30 минут
+                snoozeFeedback(60); // hide for 60 minutes
             };
         }
 
@@ -543,34 +469,52 @@
             try {
                 const r = await fetch('/scheduling/api/feedback/pending/');
                 const data = await r.json();
-                if(!data.pending) return;
+                const banner = document.getElementById('feedbackBanner');
+                if(!data.pending){
+                    // Нет ожиданий — скрыть баннер/модалку
+                    if (banner && !banner.classList.contains('d-none')) banner.classList.add('d-none');
+                    if (feedbackModal){ try { feedbackModal.hide(); } catch(e){} }
+                    return;
+                }
                 const lesson = data.lesson;
                 if(!lesson) return;
-                // Предотвратить повторное открытие для того же урока
+                // Не открывать повторно для того же урока
                 if(currentFeedbackLessonId === lesson.id) return;
-                if(data.show_banner){
-                    showFeedbackBanner(lesson);
-                } else {
-                    if(!isSnoozed()){
-                        showFeedbackModal(lesson);
-                    }
-                }
+                // Всегда показываем баннер в течение часа после окончания
+                showFeedbackBanner(lesson);
             } catch(e){
                 console.warn('feedback pending check failed', e);
             }
         }
 
         function bindFeedbackEvents(){
-            document.querySelectorAll('#feedbackStars .bi').forEach(star => {
-                star.addEventListener('click', () => {
-                    const val = parseInt(star.getAttribute('data-value'));
+            // Hover/click via event delegation to avoid flicker between icons
+            const starsWrap = document.getElementById('feedbackStars');
+            if (starsWrap){
+                starsWrap.addEventListener('pointermove', (e) => {
+                    const star = e.target.closest('#feedbackStars .bi');
+                    if (!star) return;
+                    const val = parseInt(star.getAttribute('data-value')) || 0;
+                    if (hoverRating !== val){
+                        hoverRating = val;
+                        paintStars(hoverRating);
+                    }
+                });
+                starsWrap.addEventListener('pointerleave', () => {
+                    hoverRating = 0;
+                    paintStars(selectedRating || 0);
+                });
+                starsWrap.addEventListener('click', (e) => {
+                    const star = e.target.closest('#feedbackStars .bi');
+                    if (!star) return;
+                    const val = parseInt(star.getAttribute('data-value')) || 0;
                     setStars(val);
                 });
-            });
+            }
             const skipBtn = document.getElementById('feedbackSkipBtn');
             if (skipBtn){
                 skipBtn.addEventListener('click', ()=>{
-                    snoozeFeedback(10); // не показывать модалку 10 минут
+                    snoozeFeedback(10);
                 });
             }
             const submitBtn = document.getElementById('feedbackSubmitBtn');
@@ -581,60 +525,48 @@
                     const csrf = getCSRFToken();
                     submitBtn.disabled = true;
                     try{
-                        // Send as application/x-www-form-urlencoded to avoid CORS preflight
                         const form = new URLSearchParams();
                         form.append('lesson_id', lessonId);
                         form.append('rating', selectedRating);
                         form.append('comment', comment);
-                        // Include csrf token in form body as csrfmiddlewaretoken so Django accepts it without custom headers
                         form.append('csrfmiddlewaretoken', csrf);
-
-                        const resp = await fetch('/scheduling/api/feedback/submit/', {
                         const SUBMIT_URL = "{% url 'scheduling:feedback_submit' %}";
                         const resp = await fetch(SUBMIT_URL, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
                             body: form,
                             credentials: 'same-origin'
                         });
-                         if(resp.ok){
+                        if(resp.ok){
                             const d = await resp.json();
-                            // Показать благодарность
                             const div = document.createElement('div');
                             div.className = 'alert alert-success position-fixed top-0 start-50 translate-middle-x mt-2 shadow';
                             div.textContent = d.message || 'Спасибо за отзыв';
                             document.body.appendChild(div);
                             setTimeout(()=>div.remove(), 3000);
                             if(feedbackModal){ feedbackModal.hide(); }
+                            hideFeedbackBanner();
                             currentFeedbackLessonId = null;
-                            // Обновить уведомления
                             loadNotifications();
                         } else {
                             const err = await resp.json().catch(()=>({error:'Ошибка отправки'}));
                             alert(err.error || 'Ошибка');
                         }
-                     } catch(e){
-                         alert('Ошибка сети');
-                     } finally {
-                         submitBtn.disabled = false;
-                     }
-                 });
-             }
+                    } catch(e){
+                        alert('Ошибка сети');
+                    } finally {
+                        submitBtn.disabled = false;
+                    }
+                });
+            }
         }
 
         document.addEventListener('DOMContentLoaded', ()=>{
-            // initial notifications
-            try { loadNotifications(); } catch(e){}
-            notificationUpdateInterval = setInterval(()=>{
-                try { loadNotifications(); } catch(e){}
-            }, 60000);
-
-            // feedback
-            bindFeedbackEvents();
-
             // Сразу проверим наличие уроков для отзыва
             checkPendingFeedback();
 
-            // Проверяем каждую минуту
-            setInterval(checkPendingFeedback, 60000);
+            // Проверяем каждые 15 секунд для большей оперативности
+            setInterval(checkPendingFeedback, 15000);
 
             // Также проверяем при возвращении на вкладку
             document.addEventListener('visibilitychange', () => {
@@ -643,10 +575,180 @@
                 }
             });
         });
+
+        // One-time timezone detection and sync to server (per session)
+        (function syncUserTimezoneOnce(){
+            try{
+                const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                if(!tz) return;
+                const already = sessionStorage.getItem('tz_set') === '1' && sessionStorage.getItem('tz_name') === tz;
+                if(already) return;
+                const csrf = getCSRFToken && getCSRFToken();
+                fetch("{% url 'accounts:set_timezone' %}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrf || ''
+                    },
+                    body: JSON.stringify({ timezone: tz })
+                }).then(function(){
+                    try{ sessionStorage.setItem('tz_set','1'); sessionStorage.setItem('tz_name', tz); }catch(e){}
+                }).catch(function(){});
+            }catch(e){}
+        })();
     </script>
     {% endif %}
 
     {% block extra_js %}
+    <script>
+        // Language code as a global with redeclare-safe guard
+        if (typeof langCode === 'undefined') { var langCode = '{{ request.LANGUAGE_CODE|default:"ru" }}'; }
+        // Add CSRF token to all AJAX requests
+        function getCSRFToken() {
+            // Prefer cookie csrftoken if present
+            const getCookie = (name) => {
+                const value = `; ${document.cookie}`;
+                const parts = value.split(`; ${name}=`);
+                if (parts.length === 2) return parts.pop().split(';').shift();
+            };
+            const cookieToken = getCookie('csrftoken');
+            if (cookieToken) return cookieToken;
+            const token = document.querySelector('[name=csrfmiddlewaretoken]');
+            return token ? token.value : '';
+        }
+        // Notification functionality
+        let notificationUpdateInterval;
+        const NOTIF_API_URL = "/" + langCode + "/assignments/api/notifications/";
+        function loadNotifications() {
+            const escapeHTML = (s) => (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m]));
+            const pickIcon = (n) => {
+                const t = ((n.category || n.type || n.title || '')+ '').toLowerCase();
+                if (/(ошиб|проблем|error|fail|вниман)/.test(t)) return {icon:'bi-exclamation-circle', tone:'ni-danger'};
+                if (/(успеш|готов|сдан|принят|success|готово)/.test(t)) return {icon:'bi-clipboard-check', tone:'ni-success'};
+                if (/(урок|занят|встреч|calendar|meeting|событ)/.test(t)) return {icon:'bi-calendar-event', tone:'ni-info'};
+                if (/(коммент|сообщ|чат|ответ|message|comment)/.test(t)) return {icon:'bi-chat-left-dots', tone:'ni-info'};
+                if (/(вниман|важно|warning|предупр)/.test(t)) return {icon:'bi-exclamation-triangle', tone:'ni-warning'};
+                return {icon:'bi-bell', tone:'ni-default'};
+            };
+            fetch(NOTIF_API_URL)
+                .then(response => response.json())
+                .then(data => {
+                    const notificationList = document.getElementById('notificationList');
+                    const notificationCount = document.getElementById('notificationCount');
+                    if (data.unread_count > 0) {
+                        notificationCount.style.display = 'inline-block';
+                        notificationCount.textContent = '';
+                    } else {
+                        notificationCount.style.display = 'none';
+                    }
+                    if (data.notifications.length === 0) {
+                        notificationList.innerHTML = '<div class="notification-item text-center text-muted py-3">Нет уведомлений</div>';
+                    } else {
+                        notificationList.innerHTML = data.notifications.map(n => {
+                            let formatted;
+                            try {
+                                const d = new Date(n.sent_at_utc || n.sent_at);
+                                formatted = isNaN(d) ? '' : d.toLocaleString(undefined, {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+                            } catch(e){ formatted=''; }
+                            const meta = pickIcon(n);
+                            const title = escapeHTML(n.title || 'Уведомление');
+                            const message = escapeHTML(n.message || '');
+                            return `
+                            <div class="notification-item ${!n.is_read ? 'notification-unread' : ''}" onclick="markAsRead(${n.id})">
+                                <div class="notification-icon ${meta.tone}"><i class="bi ${meta.icon}"></i></div>
+                                <div class="notification-content">
+                                    <div class="notification-meta">
+                                        <span class="notification-title">${title}</span>
+                                        <span class="notification-time">${formatted || ''}</span>
+                                    </div>
+                                    <div class="notification-message">${message}</div>
+                                </div>
+                            </div>`;
+                        }).join('');
+                    }
+                })
+                .catch(() => {
+                    // keep silent on errors
+                });
+        }
+        function markAsRead(notificationId) {
+            const csrfToken = getCSRFToken();
+            if (!csrfToken) {
+                console.warn('CSRF token not found');
+                return;
+            }
+            fetch(`/${langCode}/assignments/notifications/${notificationId}/read/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                }
+            })
+            .then(() => {
+                // Reload notifications to update counts
+                loadNotifications();
+            })
+            .catch(error => {
+                console.error('Error marking notification as read:', error);
+            });
+        }
+        const MARK_ALL_URL = "/" + langCode + "/assignments/notifications/mark-all-read/";
+        function markAllNotificationsRead(ev){
+            if(ev) ev.preventDefault();
+            const csrf = getCSRFToken();
+            fetch(MARK_ALL_URL, {
+                method:'POST',
+                headers:{'X-CSRFToken': csrf}
+            }).then(r=>r.json()).then(d=>{
+                if(d.status==='success'){
+                    const list = document.getElementById('notificationList');
+                    if(list){
+                        list.querySelectorAll('.notification-item').forEach(el=>{
+                            el.classList.remove('notification-unread');
+                            const dot = el.querySelector('.notification-unread-dot');
+                            if(dot) dot.remove();
+                        });
+                    }
+                    const badge = document.getElementById('notificationCount');
+                    if(badge){ badge.style.display='none'; badge.textContent='0'; }
+                }
+            }).catch(()=>{});
+        }
+        document.addEventListener('DOMContentLoaded', ()=>{
+            try { loadNotifications(); } catch(e){}
+            notificationUpdateInterval = setInterval(()=>{
+                try { loadNotifications(); } catch(e){}
+            }, 60000);
+            try {
+                const bell = document.getElementById('notificationsDropdown');
+                if (bell && window.bootstrap && bootstrap.Dropdown) {
+                    const bellDD = bootstrap.Dropdown.getOrCreateInstance(bell, {autoClose: true});
+                    bell.addEventListener('click', (ev)=>{ ev.preventDefault(); bellDD.toggle(); });
+                    bell.addEventListener('show.bs.dropdown', () => { try { loadNotifications(); } catch(e){} });
+                    bell.addEventListener('shown.bs.dropdown', () => { try { loadNotifications(); } catch(e){} });
+                    // Close dropdown when clicking anywhere inside the menu
+                    const notifMenu = document.getElementById('notificationDropdown');
+                    if (notifMenu && !notifMenu.dataset.closeBound) {
+                        notifMenu.addEventListener('click', ()=>{ bellDD.hide(); });
+                        notifMenu.dataset.closeBound = '1';
+                    }
+                    // Close dropdown on any click anywhere (except bell itself)
+                    if (!window.__notifGlobalClickBound) {
+                        document.addEventListener('click', (ev)=>{
+                            const t = ev.target;
+                            const onBell = t && t.closest && t.closest('#notificationsDropdown');
+                            const onMenu = t && t.closest && t.closest('#notificationDropdown');
+                            // if click was on bell, let bell handler decide (toggle). If on menu, allow menu handler to hide.
+                            if (onBell || onMenu) return;
+                            // if dropdown is open, hide it
+                            const expanded = bell.getAttribute('aria-expanded') === 'true';
+                            if (expanded) { try { bellDD.hide(); } catch(e){} }
+                        });
+                        window.__notifGlobalClickBound = true;
+                    }
+                }
+            } catch(e){}
+        });
+    </script>
     {% endblock %}
 </body>
 </html>

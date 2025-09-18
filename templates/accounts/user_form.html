@@ -6,14 +6,17 @@
 {% endblock %}
 
 {% block content %}
+<style>
+  .title-icon { height: 1em; width: auto; vertical-align: -0.12em; }
+  .icon { height: 1em; width: auto; vertical-align: -0.15em; }
+</style>
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
     <h1 class="h2">
-        <i class="bi bi-person-plus"></i> 
         {% if object %}{% trans "Редактировать пользователя" %} - {{ object.full_name }}{% else %}{% trans "Добавить пользователя" %}{% endif %}
     </h1>
     <div class="btn-toolbar mb-2 mb-md-0">
         <a href="{% url 'accounts:user_list' %}" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-arrow-left"></i> {% trans "Назад к пользователям" %}
+            <img src="https://img.icons8.com/fluency/20/undo.png" alt="" class="icon me-1"/> {% trans "Назад к пользователям" %}
         </a>
     </div>
 </div>
@@ -23,7 +26,7 @@
         <div class="card">
             <div class="card-header">
                 <h5 class="card-title mb-0">
-                    <i class="bi bi-person-gear"></i> {% trans "Информация о пользователе" %}
+                    {% trans "Информация о пользователе" %}
                 </h5>
             </div>
             <div class="card-body">
@@ -33,7 +36,7 @@
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label for="{{ form.username.id_for_label }}" class="form-label">
-                                <i class="bi bi-at"></i> {% trans "Имя пользователя" %} *
+                                {% trans "Имя пользователя" %} *
                             </label>
                             {{ form.username }}
                             {% if form.username.help_text %}
@@ -45,7 +48,7 @@
                         </div>
                         <div class="col-md-6">
                             <label for="{{ form.email.id_for_label }}" class="form-label">
-                                <i class="bi bi-envelope"></i> {% trans "Email" %} *
+                                {% trans "Email" %} *
                             </label>
                             {{ form.email }}
                             {% if form.email.errors %}
@@ -57,7 +60,7 @@
                     <div class="row mb-3">
                         <div class="col-md-4">
                             <label for="{{ form.first_name.id_for_label }}" class="form-label">
-                                <i class="bi bi-person"></i> {% trans "Имя" %} *
+                                {% trans "Имя" %} *
                             </label>
                             {{ form.first_name }}
                             {% if form.first_name.errors %}
@@ -66,7 +69,7 @@
                         </div>
                         <div class="col-md-4">
                             <label for="{{ form.last_name.id_for_label }}" class="form-label">
-                                <i class="bi bi-person"></i> {% trans "Фамилия" %} *
+                                {% trans "Фамилия" %} *
                             </label>
                             {{ form.last_name }}
                             {% if form.last_name.errors %}
@@ -75,7 +78,7 @@
                         </div>
                         <div class="col-md-4">
                             <label for="{{ form.middle_name.id_for_label }}" class="form-label">
-                                <i class="bi bi-person"></i> {% trans "Отчество" %}
+                                {% trans "Отчество" %}
                             </label>
                             {{ form.middle_name }}
                             {% if form.middle_name.errors %}
@@ -87,7 +90,7 @@
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label for="{{ form.role.id_for_label }}" class="form-label">
-                                <i class="bi bi-shield"></i> {% trans "Роль" %} *
+                                {% trans "Роль" %} *
                             </label>
                             {{ form.role }}
                             {% if form.role.errors %}
@@ -101,7 +104,7 @@
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label for="{{ form.password.id_for_label }}" class="form-label">
-                                    <i class="bi bi-lock"></i> {% trans "Пароль" %} *
+                                    {% trans "Пароль" %} *
                                 </label>
                                 {{ form.password }}
                                 {% if form.password.help_text %}
@@ -117,7 +120,7 @@
                         <div class="mb-3 form-check">
                             {{ form.is_active }}
                             <label class="form-check-label" for="{{ form.is_active.id_for_label }}">
-                                <i class="bi bi-toggle-on"></i> {% trans "Аккаунт активен" %}
+                                {% trans "Аккаунт активен" %}
                             </label>
                             {% if form.is_active.errors %}
                                 <div class="text-danger small">{{ form.is_active.errors }}</div>
@@ -128,36 +131,27 @@
                     
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-save"></i> 
                             {% if object %}{% trans "Обновить пользователя" %}{% else %}{% trans "Создать пользователя" %}{% endif %}
                         </button>
                         <a href="{% url 'accounts:user_list' %}" class="btn btn-secondary">
-                            <i class="bi bi-x-circle"></i> {% trans "Отмена" %}
+                            {% trans "Отмена" %}
                         </a>
                     </div>
                 </form>
             </div>
         </div>
     </div>
-    
     <div class="col-md-4">
         <div class="card">
             <div class="card-header">
                 <h5 class="card-title mb-0">
-                    <i class="bi bi-info-circle"></i> {% trans "Справка" %}
+                    <img src="https://img.icons8.com/fluency/20/info.png" alt="" class="icon me-1"> {% trans "Справка" %}
                 </h5>
             </div>
             <div class="card-body">
-                <h6>{% trans "Роли пользователей" %}:</h6>
-                <ul class="list-unstyled">
-                    <li><span class="badge bg-info">{% trans "Ученик" %}</span> - {% trans "Может просматривать занятия и отправлять задания" %}</li>
-                    <li><span class="badge bg-success">{% trans "Инструктор" %}</span> - {% trans "Может управлять занятиями и оценивать задания" %}</li>
-                    <li><span class="badge bg-primary">{% trans "Методист" %}</span> - {% trans "Может управлять пользователями и создавать расписания" %}</li>
-                </ul>
-                
                 <h6 class="mt-3">{% trans "Обязательные поля" %}:</h6>
                 <p class="small text-muted">
-                    {% trans "Поля, отмеченные *, являются обязательными. Имя пользователя должно быть уникальным, а пароли должны соответствовать требованиям безопасности Django." %}
+                    {% trans "Поля, отмеченные *, являются обязательными. Имя пользователя должно быть уникальным, а пароли должны соответствовать требованиям безопасности." %}
                 </p>
                 
                 {% if not object %}

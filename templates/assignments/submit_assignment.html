@@ -4,10 +4,57 @@
 {% block title %}{% trans "Сдача задания" %} - {% trans "Школа" %}{% endblock %}
 
 {% block content %}
+<style>
+  .card {
+    border-radius: 16px;
+    box-shadow: 0 4px 18px rgba(16,24,40,.10);
+    border: 1px solid #e7ecf3;
+  }
+  .card-header {
+    background: linear-gradient(180deg, #f8fafc 0%, #eef3f9 100%);
+    border-bottom: 1px solid #e9edf5;
+    border-radius: 16px 16px 0 0;
+    padding: 1rem 1.5rem;
+  }
+  .card-title {
+    font-weight: 700;
+    font-size: 1.2rem;
+    color: #1a2340;
+  }
+  .form-label {
+    font-weight: 500;
+    color: #1a2340;
+  }
+  .form-control, .form-select {
+    border-radius: 8px;
+    border: 1px solid #e7ecf3;
+    font-size: 1.05rem;
+  }
+  .form-control:focus, .form-select:focus {
+    border-color: #9bb7ff;
+    box-shadow: 0 0 0 .2rem rgba(13,110,253,.12);
+  }
+  .btn {
+    border-radius: 8px;
+    font-weight: 500;
+  }
+  .selected-file-item {
+    background: #f8fafc;
+    border: 1px solid #e7ecf3;
+    border-radius: 8px;
+    padding: 6px 12px;
+    margin-bottom: 6px;
+    font-size: 0.98rem;
+    color: #1a2340;
+  }
+  .form-text {
+    color: #6c757d;
+    font-size: 0.95rem;
+  }
+</style>
+
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-    <h1 class="h2">
-        <i class="bi bi-upload"></i> {% trans "Сдача задания" %}
-    </h1>
+    <h1 class="h2">{% trans "Сдача задания" %}</h1>
     <div class="btn-toolbar mb-2 mb-md-0">
         <div class="btn-group me-2">
             <a href="{% url 'assignments:assignment_detail' assignment.pk %}" class="btn btn-outline-secondary btn-sm">
@@ -23,7 +70,7 @@
         <div class="card mb-4">
             <div class="card-header">
                 <h5 class="card-title mb-0">
-                    <i class="bi bi-journal-text"></i> {{ assignment.title }}
+                    {{ assignment.title }}
                 </h5>
             </div>
             <div class="card-body">
@@ -59,10 +106,13 @@
                     {% csrf_token %}
                     <div class="mb-3">
                         <label for="submission_files" class="form-label">{% trans "Файлы работы" %}</label>
-                        <input type="file" class="form-control" name="submission_files" id="submission_files" multiple
-                               accept=".pdf,.doc,.docx,.txt,.jpg,.png,.zip">
+                        <!-- Скрытый input -->
+                        <input type="file" class="form-control d-none" name="submission_files" id="submission_files" multiple accept=".pdf,.doc,.docx,.txt,.jpg,.png,.zip">
+                        <!-- Кастомная кнопка -->
+                        <button type="button" id="custom-file-btn" class="btn btn-outline-primary mb-2">Выбрать файлы</button>
                         <div class="form-text">{% trans "Можно выбрать несколько файлов. Разрешены: PDF, DOC, DOCX, TXT, JPG, PNG, ZIP" %}</div>
                         <div id="submission-files-list" class="mt-2"></div>
+                        <div id="file-errors" class="text-danger mt-2"></div>
                     </div>
                     <div class="mb-3">
                         <label for="comments" class="form-label">{% trans "Комментарий (необязательно)" %}</label>
@@ -130,37 +180,64 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Handle multiple file selection for submissions
+    const MAX_FILE_SIZE = 200 * 1024 * 1024;
     const submissionFilesInput = document.getElementById('submission_files');
+    const customFileBtn = document.getElementById('custom-file-btn');
     const submissionFilesList = document.getElementById('submission-files-list');
+    const fileErrors = document.getElementById('file-errors');
     let selectedSubmissionFiles = [];
-    
+
+    // Клик по кастомной кнопке вызывает выбор файлов
+    if (customFileBtn && submissionFilesInput) {
+        customFileBtn.addEventListener('click', function() {
+            submissionFilesInput.click();
+        });
+    }
+
+    // Обработка выбора файлов
     if (submissionFilesInput) {
         submissionFilesInput.addEventListener('change', function(e) {
             const files = Array.from(e.target.files);
-            
+            let validFiles = [];
+            let errorMessages = [];
             files.forEach(file => {
-                // Check if file already selected
-                const existingIndex = selectedSubmissionFiles.findIndex(f => f.name === file.name && f.size === file.size);
-                if (existingIndex === -1) {
-                    selectedSubmissionFiles.push(file);
+                if (file.size > MAX_FILE_SIZE) {
+                    errorMessages.push(`<div>${file.name} (${formatFileSize(file.size)}) — <strong>Файл слишком большой! Максимальный размер — 200MB.</strong></div>`);
+                } else {
+                    validFiles.push(file);
                 }
             });
-            
+            selectedSubmissionFiles = validFiles;
             updateSubmissionFilesList();
-            e.target.value = ''; // Clear input to allow selecting same files again
+            updateFileErrors(errorMessages);
+            submissionFilesInput.value = '';
         });
     }
-    
+
+    // Проверка размера при отправке формы
+    const form = document.querySelector('form');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            if (selectedSubmissionFiles.some(file => file.size > MAX_FILE_SIZE)) {
+                updateFileErrors([`<div><strong>Файл слишком большой! Максимальный размер — 200MB.</strong></div>`]);
+                selectedSubmissionFiles = [];
+                updateSubmissionFilesList();
+                e.preventDefault();
+                return;
+            }
+            // Добавляем выбранные файлы в форму
+            const dataTransfer = new DataTransfer();
+            selectedSubmissionFiles.forEach(file => dataTransfer.items.add(file));
+            submissionFilesInput.files = dataTransfer.files;
+        });
+    }
+
     function updateSubmissionFilesList() {
         if (!submissionFilesList) return;
-        
         submissionFilesList.innerHTML = '';
-        
         if (selectedSubmissionFiles.length > 0) {
             const filesContainer = document.createElement('div');
             filesContainer.className = 'selected-files-container';
-            
             selectedSubmissionFiles.forEach((file, index) => {
                 const fileItem = document.createElement('div');
                 fileItem.className = 'selected-file-item d-flex justify-content-between align-items-center mb-2 p-2 border rounded bg-light';
@@ -176,98 +253,27 @@ document.addEventListener('DOMContentLoaded', function() {
                 `;
                 filesContainer.appendChild(fileItem);
             });
-            
             submissionFilesList.appendChild(filesContainer);
         }
     }
-    
+
+    function updateFileErrors(errors) {
+        if (!fileErrors) return;
+        fileErrors.innerHTML = errors && errors.length > 0 ? errors.join('') : '';
+    }
+
     window.removeSubmissionFile = function(index) {
         selectedSubmissionFiles.splice(index, 1);
         updateSubmissionFilesList();
+        updateFileErrors([]);
     };
-    
+
     function formatFileSize(bytes) {
         if (bytes === 0) return '0 Bytes';
         const k = 1024;
         const sizes = ['Bytes', 'KB', 'MB', 'GB'];
         const i = Math.floor(Math.log(bytes) / Math.log(k));
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-    }
-    
-    // Handle form submission
-    const form = document.querySelector('form');
-    form.addEventListener('submit', function(e) {
-        const commentsField = document.getElementById('comments');
-        const hasFiles = selectedSubmissionFiles.length > 0;
-        const hasComments = commentsField && commentsField.value.trim();
-        
-        if (!hasFiles && !hasComments) {
-            alert('{% trans "Пожалуйста, загрузите файлы или добавьте комментарий" %}');
-            e.preventDefault();
-            return;
-        }
-        
-        if (hasFiles) {
-            // Create a new FormData and add selected files
-            const formData = new FormData(form);
-            
-            // Remove the original file field
-            formData.delete('submission_file');
-            
-            // Add selected files
-            selectedSubmissionFiles.forEach((file, index) => {
-                formData.append('submission_files', file);
-            });
-            
-            e.preventDefault();
-            
-            // Submit using fetch
-            fetch(form.action, {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-CSRFToken': getCookie('csrftoken'),
-                }
-            })
-            .then(response => {
-                if (response.ok) {
-                    return response.text();
-                } else {
-                    throw new Error('Submission failed');
-                }
-            })
-            .then(html => {
-                // Check if response contains form errors
-                if (html.includes('alert-danger') || html.includes('text-danger')) {
-                    // Replace page content with response to show errors
-                    document.open();
-                    document.write(html);
-                    document.close();
-                } else {
-                    // Success - redirect to assignment detail
-                    window.location.href = "{% url 'assignments:assignment_detail' assignment.pk %}";
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('{% trans "Произошла ошибка при отправке работы. Пожалуйста, попробуйте еще раз." %}');
-            });
-        }
-    });
-    
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
-            }
-        }
-        return cookieValue;
     }
 });
 </script>

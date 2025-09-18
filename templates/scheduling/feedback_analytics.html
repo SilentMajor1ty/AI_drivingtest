@@ -8,14 +8,6 @@
     <div class="col-md-3">
       <div class="card">
         <div class="card-body">
-          <div class="text-muted">Средняя оценка</div>
-          <div class="display-6">{{ overall_avg|default:"—"|floatformat:2 }}</div>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="card">
-        <div class="card-body">
           <div class="text-muted">Всего отзывов</div>
           <div class="display-6">{{ overall_total }}</div>
         </div>
@@ -24,32 +16,6 @@
   </div>
 
   <div class="row g-4">
-    <div class="col-lg-6">
-      <div class="card h-100">
-        <div class="card-header">Средняя оценка по преподавателям (по отзывам учеников)</div>
-        <div class="card-body">
-          {% if per_teacher %}
-          <div class="table-responsive">
-            <table class="table table-sm align-middle">
-              <thead><tr><th>Преподаватель</th><th class="text-center">Средняя</th><th class="text-center">Отзывов</th></tr></thead>
-              <tbody>
-                {% for t in per_teacher %}
-                <tr>
-                  <td>{{ t.lesson__teacher__first_name }} {{ t.lesson__teacher__last_name }}</td>
-                  <td class="text-center">{{ t.avg|floatformat:2 }}</td>
-                  <td class="text-center">{{ t.cnt }}</td>
-                </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-          {% else %}
-            <div class="text-muted">Нет данных</div>
-          {% endif %}
-        </div>
-      </div>
-    </div>
-
     <div class="col-lg-6">
       <div class="card h-100">
         <div class="card-header">Последние отзывы</div>
@@ -61,7 +27,7 @@
                 <div class="d-flex justify-content-between">
                   <div>
                     <strong>{{ fb.lesson.title }}</strong><br>
-                    <small class="text-muted">{{ fb.created_at|date:'d.m.Y H:i' }} • {{ fb.user.full_name }} • {{ fb.rating }}/10</small>
+                    <small class="text-muted">{{ fb.created_at|date:'d.m.Y H:i' }} • {{ fb.user.full_name }} • Преподаватель: {{ fb.lesson.teacher.full_name }}</small>
                   </div>
                   <span class="badge bg-{{ fb.rating|add:'-5'|yesno:'success,warning,danger' }}">{{ fb.rating }}</span>
                 </div>
@@ -77,7 +43,32 @@
         </div>
       </div>
     </div>
+
+    <div class="col-lg-6">
+      <div class="card h-100">
+        <div class="card-header">Средняя оценка по преподавателям (по отзывам учеников)</div>
+        <div class="card-body">
+          {% if per_teacher %}
+          <div class="table-responsive">
+            <table class="table table-sm align-middle">
+              <thead><tr><th>Преподаватель</th><th class="text-center">Средняя</th><th class="text-center">Отзывов</th></tr></thead>
+              <tbody>
+                {% for t in per_teacher %}
+                <tr>
+                  <td>{{ t.teacher_name|default:"—" }}</td>
+                  <td class="text-center">{{ t.avg|floatformat:2 }}</td>
+                  <td class="text-center">{{ t.cnt }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% else %}
+            <div class="text-muted">Нет данных</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 {% endblock %}
-

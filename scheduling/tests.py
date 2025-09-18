@@ -21,15 +21,15 @@ class FeedbackAPITest(TestCase):
         # Subject
         self.subject = Subject.objects.create(name='Math')
 
-        # Create a completed lesson in the past
+        # Create a completed lesson that ended 30 minutes ago (within 1-hour feedback window)
         now = timezone.now()
         self.lesson = Lesson.objects.create(
             title='Test Lesson',
             subject=self.subject,
             teacher=self.teacher,
             student=self.student,
-            start_time=now - timedelta(hours=2),
-            end_time=now - timedelta(hours=1, minutes=30),
+            start_time=now - timedelta(hours=1),
+            end_time=now - timedelta(minutes=30),
             status=Lesson.LessonStatus.COMPLETED,
         )
 

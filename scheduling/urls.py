@@ -1,4 +1,5 @@
 from django.urls import path
+from django.views.generic.base import RedirectView
 from . import views
 
 app_name = 'scheduling'
@@ -30,8 +31,10 @@ urlpatterns = [
     path('teacher-schedule/<int:teacher_id>/', views.teacher_schedule, name='teacher_schedule'),
     path('methodist/weekly-lessons/', views.methodist_weekly_lessons, name='methodist_weekly_lessons'),
 
-    # NEW: Feedback API and analytics
+    # Feedback API
     path('api/feedback/pending/', views.feedback_pending, name='feedback_pending'),
     path('api/feedback/submit/', views.feedback_submit, name='feedback_submit'),
-    path('methodist/feedback-analytics/', views.feedback_analytics, name='feedback_analytics'),
+
+    # Backwards compatibility redirect
+    path('methodist/feedback-analytics/', RedirectView.as_view(pattern_name='assignments:methodist_analytics', permanent=True)),
 ]

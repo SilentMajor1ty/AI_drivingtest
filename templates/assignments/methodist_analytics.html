@@ -1,188 +1,219 @@
 {% extends 'base.html' %}
 {% load i18n %}
 
-{% block title %}{% trans "Аналитика" %} - {% trans "Автошкола" %}{% endblock %}
+{% block title %}{% trans "Аналитика" %} - {% trans "Школа" %}{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-    <h1 class="h2"><i class="bi bi-graph-up"></i> {% trans "Аналитика и статистика" %}</h1>
-</div>
+<style>
+  /* Общий полиш для аналитики */
+  .analytics .card { border: 1px solid #e7ecf3; border-radius: 14px; box-shadow: 0 4px 16px rgba(16,24,40,.06); }
+  .analytics .card-header { background: linear-gradient(180deg, #ffffff 0%, #f7f9fc 100%); border-bottom: 1px solid #e9edf5; }
+  .analytics .badge { vertical-align: middle; }
+  .analytics .table tbody tr:hover { background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%); }
+  .analytics .clickable-row { cursor: pointer; }
+  .analytics .period-nav .btn { min-width: 84px; }
+  /* Hover усилен для таблицы средней оценки по преподавателям */
+  .analytics .teacher-avg-table tbody tr { transition: background-color .12s ease, color .12s ease; }
+  .analytics .teacher-avg-table tbody tr:hover { background: #f1f6ff; cursor: pointer; }
+  .analytics .teacher-avg-table tbody tr:hover td:first-child { text-decoration: underline; }
+</style>
 
-<div class="row">
-    <!-- Assignment Statistics -->
-    <div class="col-md-6 mb-4">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-journal-text"></i> {% trans "Статистика заданий" %}
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-6">
-                        <div class="text-center">
-                            <h3 class="text-primary">{{ total_assignments }}</h3>
-                            <p class="text-muted mb-0">{% trans "Всего заданий" %}</p>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="text-center">
-                            <h3 class="text-success">{{ completed_assignments }}</h3>
-                            <p class="text-muted mb-0">{% trans "Проверено" %}</p>
-                        </div>
-                    </div>
-                </div>
-                {% if avg_grade %}
-                <hr>
-                <div class="text-center">
-                    <h4 class="text-info">{{ avg_grade|floatformat:1 }}/10</h4>
-                    <p class="text-muted mb-0">{% trans "Средняя оценка" %}</p>
-                </div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
+<div class="analytics">
+  <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+      <h1 class="h2">{% trans "Аналитика и статистика" %}</h1>
+  </div>
 
-    <!-- Lesson Statistics -->
-    <div class="col-md-6 mb-4">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-calendar-check"></i> {% trans "Статистика занятий" %}
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="row mb-3">
-                    <div class="col-4">
-                        <div class="text-center">
-                            <h4 class="text-primary">{{ total_lessons }}</h4>
-                            <small class="text-muted">{% trans "Всего" %}</small>
-                        </div>
-                    </div>
-                    <div class="col-4">
-                        <div class="text-center">
-                            <h4 class="text-success">{{ completed_lessons }}</h4>
-                            <small class="text-muted">{% trans "Проведено" %}</small>
-                        </div>
-                    </div>
-                    <div class="col-4">
-                        <div class="text-center">
-                            <h4 class="text-danger">{{ cancelled_lessons }}</h4>
-                            <small class="text-muted">{% trans "Отменено" %}</small>
-                        </div>
-                    </div>
-                </div>
-                <hr>
-                <div class="text-center">
-                    <h4 class="text-info">{{ attendance_rate|floatformat:1 }}%</h4>
-                    <p class="text-muted mb-0">{% trans "Посещаемость" %}</p>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row">
-    <!-- Lesson Ratings -->
-    {% if avg_teacher_rating or avg_student_rating %}
-    <div class="col-md-6 mb-4">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-star-fill"></i> {% trans "Рейтинги занятий" %}
-                </h5>
-            </div>
-            <div class="card-body">
-                {% if avg_teacher_rating %}
-                <div class="mb-3">
-                    <div class="d-flex justify-content-between">
-                        <span>{% trans "Оценка преподавателей" %}</span>
-                        <strong>{{ avg_teacher_rating|floatformat:1 }}/10</strong>
-                    </div>
-                    <div class="progress">
-                        <div class="progress-bar bg-success" style="width: {% widthratio avg_teacher_rating 10 100 %}%"></div>
-                    </div>
-                </div>
-                {% endif %}
-                {% if avg_student_rating %}
-                <div class="mb-3">
-                    <div class="d-flex justify-content-between">
-                        <span>{% trans "Оценка учеников" %}</span>
-                        <strong>{{ avg_student_rating|floatformat:1 }}/10</strong>
-                    </div>
-                    <div class="progress">
-                        <div class="progress-bar bg-info" style="width: {% widthratio avg_student_rating 10 100 %}%"></div>
-                    </div>
-                </div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- Top Students -->
-    {% if student_grades %}
-    <div class="col-md-6 mb-4">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-trophy"></i> {% trans "Топ студентов по оценкам" %}
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-sm">
-                        <thead>
-                            <tr>
-                                <th>{% trans "Ученик" %}</th>
-                                <th class="text-center">{% trans "Заданий" %}</th>
-                                <th class="text-center">{% trans "Средняя оценка" %}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for student in student_grades %}
-                            <tr>
-                                <td>{{ student.student__first_name }} {{ student.student__last_name }}</td>
-                                <td class="text-center">{{ student.assignment_count }}</td>
-                                <td class="text-center">
-                                    <span class="badge bg-{% if student.avg_grade >= 8 %}success{% elif student.avg_grade >= 6 %}warning{% else %}danger{% endif %}">
-                                        {{ student.avg_grade|floatformat:1 }}
-                                    </span>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-</div>
-
-<!-- Action Buttons -->
-<div class="row">
+  <!-- 1) Проведено уроков с переключением периода -->
+  <div class="row mb-4">
     <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-tools"></i> {% trans "Действия" %}
-                </h5>
+      <div class="card">
+        <div class="card-header d-flex flex-wrap gap-2 justify-content-between align-items-center">
+          <div class="d-flex align-items-center gap-3">
+            <h5 class="card-title mb-0">{% trans "Проведено уроков" %}</h5>
+            <div class="btn-group btn-group-sm" role="group" aria-label="interval">
+              <a class="btn btn-outline-primary {% if interval == 'week' %}active{% endif %}" href="{% url 'assignments:methodist_analytics' %}?interval=week&ref={{ current_ref }}">{% trans "Неделя" %}</a>
+              <a class="btn btn-outline-primary {% if interval == 'month' %}active{% endif %}" href="{% url 'assignments:methodist_analytics' %}?interval=month&ref={{ current_ref }}">{% trans "Месяц" %}</a>
             </div>
-            <div class="card-body">
-                <div class="d-flex gap-2">
-                    <a href="{% url 'assignments:assignment_list' %}" class="btn btn-outline-primary">
-                        <i class="bi bi-journal-text"></i> {% trans "Все задания" %}
-                    </a>
-                    <a href="{% url 'scheduling:calendar' %}" class="btn btn-outline-success">
-                        <i class="bi bi-calendar3"></i> {% trans "Календарь" %}
-                    </a>
-                    <a href="{% url 'assignments:assignment_create' %}" class="btn btn-primary">
-                        <i class="bi bi-plus"></i> {% trans "Создать задание" %}
-                    </a>
-                </div>
-            </div>
+          </div>
+          <div class="d-flex align-items-center gap-2 period-nav">
+            <a class="btn btn-outline-secondary btn-sm" href="{% url 'assignments:methodist_analytics' %}?interval={{ interval }}&ref={{ prev_ref }}">{% trans "Назад" %}</a>
+            <small class="text-muted">
+              {% if interval == 'month' %}
+                {{ period_start|date:'F Y' }}
+              {% else %}
+                {{ period_start|date:'d.m.Y' }} — {{ period_end|date:'d.m.Y' }}
+              {% endif %}
+            </small>
+            <a class="btn btn-outline-secondary btn-sm" href="{% url 'assignments:methodist_analytics' %}?interval={{ interval }}&ref={{ next_ref }}">{% trans "Вперёд" %}</a>
+          </div>
         </div>
+        <div class="card-body">
+          {% if period_teacher_counts %}
+          <div class="table-responsive">
+            <table class="table table-sm align-middle">
+              <thead>
+                <tr>
+                  <th>{% trans "Преподаватель" %}</th>
+                  <th class="text-center" style="width: 160px;">{% trans "Проведено" %}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in period_teacher_counts %}
+                <tr>
+                  <td>{{ row.teacher_name|default:"—" }}</td>
+                  <td class="text-center">{{ row.count }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% else %}
+            <div class="text-muted">{% trans "За выбранный период нет проведённых уроков" %}</div>
+          {% endif %}
+        </div>
+      </div>
     </div>
+  </div>
+
+  <!-- 2) Две колонки: Статистика занятий и Рейтинги занятий -->
+  <div class="row g-4 mb-4">
+    <div class="col-md-6">
+      <div class="card h-100">
+        <div class="card-header">
+          <h5 class="card-title mb-0">{% trans "Статистика занятий" %}</h5>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-4">
+              <div class="text-center">
+                <h4 class="text-primary">{{ total_lessons }}</h4>
+                <small class="text-muted">{% trans "Всего" %}</small>
+              </div>
+            </div>
+            <div class="col-4">
+              <div class="text-center">
+                <h4 class="text-success">{{ completed_lessons }}</h4>
+                <small class="text-muted">{% trans "Проведено" %}</small>
+              </div>
+            </div>
+            <div class="col-4">
+              <div class="text-center">
+                <h4 class="text-danger">{{ cancelled_lessons }}</h4>
+                <small class="text-muted">{% trans "Отменено" %}</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {% if avg_teacher_rating or avg_student_rating %}
+    <div class="col-md-6">
+      <div class="card h-100">
+        <div class="card-header">
+          <h5 class="card-title mb-0">{% trans "Рейтинги занятий" %}</h5>
+        </div>
+        <div class="card-body">
+          {% if avg_teacher_rating %}
+          <div class="mb-3">
+            <div class="d-flex justify-content-between">
+              <span>{% trans "Оценка преподавателей" %}</span>
+              <strong>{{ avg_teacher_rating|floatformat:1 }}/10</strong>
+            </div>
+          </div>
+          {% endif %}
+          {% if avg_student_rating %}
+          <div>
+            <div class="d-flex justify-content-between">
+              <span>{% trans "Оценка студентов" %}</span>
+              <strong>{{ avg_student_rating|floatformat:1 }}/10</strong>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- 3) Две колонки: Средняя по ученикам и Средняя по преподавателям -->
+  <div class="row g-4">
+    <div class="col-lg-6">
+      <div class="card h-100">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="card-title mb-0">{% trans "Средняя оценка по ученикам" %}</h5>
+          <small class="text-muted">{% trans "Топ 10" %}</small>
+        </div>
+        <div class="card-body">
+          {% if student_grades %}
+          <div class="table-responsive">
+            <table class="table table-sm align-middle">
+              <thead>
+                <tr>
+                  <th>{% trans "Ученик" %}</th>
+                  <th class="text-center">{% trans "Средняя" %}</th>
+                  <th class="text-center">{% trans "Оцененных" %}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for s in student_grades %}
+                <tr>
+                  <td>{{ s.student__first_name }} {{ s.student__last_name }}</td>
+                  <td class="text-center">{{ s.avg_grade|floatformat:2 }}</td>
+                  <td class="text-center">{{ s.assignment_count }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% else %}
+            <div class="text-muted">{% trans "Нет данных по оценкам заданий" %}</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-6">
+      <div class="card h-100">
+        <div class="card-header">
+          <h5 class="card-title mb-0">{% trans "Средняя оценка по преподавателям" %}</h5>
+        </div>
+        <div class="card-body">
+          {% if per_teacher %}
+          <div class="table-responsive">
+            <table class="table table-sm align-middle teacher-avg-table">
+              <thead>
+                <tr>
+                  <th>{% trans "Преподаватель" %}</th>
+                  <th class="text-center">{% trans "Средняя" %}</th>
+                  <th class="text-center">{% trans "Отзывов" %}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for t in per_teacher %}
+                  {% if t.teacher_id %}
+                  <tr class="clickable-row" onclick="window.location.href='{% url 'assignments:teacher_feedback_list' t.teacher_id %}'">
+                    <td>{{ t.teacher_name|default:"—" }}</td>
+                    <td class="text-center">{{ t.avg|floatformat:2 }}</td>
+                    <td class="text-center">{{ t.cnt }}</td>
+                  </tr>
+                  {% else %}
+                  <tr>
+                    <td>{{ t.teacher_name|default:"—" }}</td>
+                    <td class="text-center">{{ t.avg|floatformat:2 }}</td>
+                    <td class="text-center">{{ t.cnt }}</td>
+                  </tr>
+                  {% endif %}
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% else %}
+            <div class="text-muted">{% trans "Нет данных" %}</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %}

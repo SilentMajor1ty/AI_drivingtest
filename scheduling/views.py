@@ -9,7 +9,7 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.views.decorators.http import require_POST
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time as dt_time
 from django.db.models import Q
 from django.conf import settings
 from .models import Lesson, Subject, Schedule, ProblemReport, LessonFile
@@ -18,6 +18,7 @@ from assignments.models import Notification
 from .models import LessonFeedback
 from django.db.models import Avg, Count
 import logging
+from accounts.models import User  # добавлен импорт для списка преподавателей
 
 logger = logging.getLogger('admin_actions')
 
@@ -38,31 +39,33 @@ def calendar_view(request):
     # Get week offset from request (default to current week)
     week_offset = int(request.GET.get('week', 0))
     
-    # Calculate the week start (Monday)
-    today = timezone.now().date()
+    # Calculate the week start (Monday) in user's timezone
+    today = timezone.localdate()
     current_monday = today - timedelta(days=today.weekday())
     week_start = current_monday + timedelta(weeks=week_offset)
     week_end = week_start + timedelta(days=6)
-    
-    # Filter lessons for the current week (exclude cancelled so card disappears)
-    base_filter = {
-        'start_time__date__range': [week_start, week_end]
-    }
+
+    # Build aware datetime window [week_start 00:00, next_day 00:00) in active TZ
+    start_dt = timezone.make_aware(datetime.combine(week_start, dt_time.min))
+    end_dt_exclusive = timezone.make_aware(datetime.combine(week_end + timedelta(days=1), dt_time.min))
+
+    # Filter lessons for the current week (exclude cancelled)
+    base_qs = Lesson.objects.filter(start_time__gte=start_dt, start_time__lt=end_dt_exclusive)
     if user.is_student():
-        lessons = Lesson.objects.filter(student=user, **base_filter)
+        lessons = base_qs.filter(student=user)
     elif user.is_teacher():
-        lessons = Lesson.objects.filter(teacher=user, **base_filter)
+        lessons = base_qs.filter(teacher=user)
     else:  # Methodist
-        lessons = Lesson.objects.filter(**base_filter)
+        lessons = base_qs
     lessons = lessons.exclude(status=Lesson.LessonStatus.CANCELLED).select_related('teacher', 'student', 'subject').order_by('start_time')
 
-    # Group lessons by day
-    lessons_by_day = {}
-    for i in range(7):  # Monday to Sunday
-        day_date = week_start + timedelta(days=i)
-        day_lessons = lessons.filter(start_time__date=day_date)
-        lessons_by_day[day_date] = day_lessons
-    
+    # Group lessons by local day
+    lessons_by_day = { (week_start + timedelta(days=i)): [] for i in range(7) }
+    for lesson in lessons:
+        local_date = timezone.localtime(lesson.start_time).date()
+        if week_start <= local_date <= week_end:
+            lessons_by_day[local_date].append(lesson)
+
     # Calculate week navigation
     prev_week = week_offset - 1
     next_week = week_offset + 1
@@ -91,12 +94,14 @@ def calendar_lessons_api(request):
     month = int(request.GET.get('month', timezone.now().month))
     
     # Filter lessons for the requested month using timezone-aware dates
-    start_date = timezone.make_aware(timezone.datetime(year, month, 1))
+    start_date_naive = datetime(year, month, 1)
+    start_date = timezone.make_aware(start_date_naive)
     if month == 12:
-        end_date = timezone.make_aware(timezone.datetime(year + 1, 1, 1))
+        end_date_naive = datetime(year + 1, 1, 1)
     else:
-        end_date = timezone.make_aware(timezone.datetime(year, month + 1, 1))
-    
+        end_date_naive = datetime(year, month + 1, 1)
+    end_date = timezone.make_aware(end_date_naive)
+
     base_qs = Lesson.objects.filter(start_time__gte=start_date, start_time__lt=end_date).exclude(status=Lesson.LessonStatus.CANCELLED)
     if user.is_student():
         lessons = base_qs.filter(student=user).select_related('teacher', 'subject')
@@ -145,29 +150,62 @@ class LessonListView(LoginRequiredMixin, ListView):
         context = super().get_context_data(**kwargs)
         user = self.request.user
 
-        # Calculate week range
-        today = timezone.now().date()
+        # Tabs (upcoming/all)
+        tab = self.request.GET.get('tab', 'upcoming')
+
+        # Build base queryset by role
+        if user.is_student():
+            base_qs = Lesson.objects.filter(student=user)
+        elif user.is_teacher():
+            base_qs = Lesson.objects.filter(teacher=user)
+        else:
+            base_qs = Lesson.objects.all()
+        base_qs = base_qs.select_related('teacher', 'student', 'subject')
+
+        # Фильтр по преподавателю (только для методиста)
+        selected_teacher = None
+        teacher_param = (self.request.GET.get('teacher') or '').strip()
+        if hasattr(user, 'is_methodist') and user.is_methodist():
+            try:
+                teacher_id = int(teacher_param) if teacher_param else None
+            except (TypeError, ValueError):
+                teacher_id = None
+            if teacher_id:
+                base_qs = base_qs.filter(teacher_id=teacher_id)
+                selected_teacher = teacher_id
+
+        # Предстоящие: запланированные и перенесенные
+        upcoming_lessons = base_qs.filter(status__in=[Lesson.LessonStatus.SCHEDULED, Lesson.LessonStatus.RESCHEDULED]).order_by('start_time')
+        # Завершённые/отменённые
+        all_lessons = base_qs.filter(status__in=[Lesson.LessonStatus.CANCELLED, Lesson.LessonStatus.COMPLETED]).order_by('-start_time')
+        active_lessons = upcoming_lessons if tab == 'upcoming' else all_lessons
+
+        # Weekly block (оставляем как серверную логику, но в шаблоне не отображаем)
+        today = timezone.localdate()
         week_start = today - timedelta(days=today.weekday())  # Monday
         week_end = week_start + timedelta(days=6)  # Sunday
 
-        # Get weekly lessons
-        from django.db.models import Q
         weekly_lessons = Lesson.objects.filter(
             Q(start_time__date__range=[week_start, week_end]) | Q(original_start_time__date__range=[week_start, week_end])
-        ).distinct().order_by('start_time')
-
-        # Filter based on user role
+        ).distinct()
         if user.is_student():
             weekly_lessons = weekly_lessons.filter(student=user)
         elif user.is_teacher():
             weekly_lessons = weekly_lessons.filter(teacher=user)
+        weekly_lessons = weekly_lessons.select_related('teacher', 'student', 'subject').order_by('start_time')
 
-        # Select related fields and order by start time
-        weekly_lessons = weekly_lessons.select_related(
-            'teacher', 'student', 'subject'
-        ).order_by('start_time')
+        # Список преподавателей для фильтра (методист)
+        teachers = []
+        if hasattr(user, 'is_methodist') and user.is_methodist():
+            teachers = User.objects.filter(role=User.UserRole.TEACHER).order_by('last_name', 'first_name')
 
         context['weekly_lessons'] = weekly_lessons
+        context['upcoming_lessons'] = upcoming_lessons
+        context['all_lessons'] = all_lessons
+        context['active_lessons'] = active_lessons
+        context['current_tab'] = tab
+        context['teachers'] = teachers
+        context['selected_teacher'] = selected_teacher
         return context
 
 
@@ -209,7 +247,15 @@ class LessonCreateView(LoginRequiredMixin, CreateView):
 
     def form_valid(self, form):
         self.object = form.save()
-        # Notifications only (no multi-file logic)
+        # Проставим автора создания, если не установлен
+        if not self.object.created_by:
+            self.object.created_by = self.request.user
+            try:
+                self.object.save(update_fields=['created_by'])
+            except Exception:
+                pass
+
+        # Notifications for the base lesson
         Notification.objects.create(
             user=self.object.teacher,
             notification_type=Notification.NotificationType.LESSON_CREATED,
@@ -224,7 +270,65 @@ class LessonCreateView(LoginRequiredMixin, CreateView):
             message=f"A new lesson '{self.object.title}' has been scheduled with {self.object.teacher.full_name} on {self.object.start_time.strftime('%B %d, %Y at %H:%M')}",
             lesson=self.object
         )
-        messages.success(self.request, f"Lesson '{self.object.title}' created successfully!")
+
+        # Handle weekly recurrence
+        created_copies = 0
+        skipped = 0
+        errors = []
+        cleaned = form.cleaned_data
+        if cleaned.get('repeat_weekly'):
+            weeks = int(cleaned.get('repeat_weeks') or 0)
+            base = self.object
+            for i in range(1, weeks + 1):
+                try:
+                    new_start = base.start_time + timedelta(weeks=i)
+                    new_end = base.end_time + timedelta(weeks=i)
+                    copy = Lesson(
+                        title=base.title,
+                        subject=base.subject,
+                        teacher=base.teacher,
+                        student=base.student,
+                        start_time=new_start,
+                        end_time=new_end,
+                        description=base.description,
+                        materials=base.materials,
+                        teacher_materials=base.teacher_materials,
+                        zoom_link=base.zoom_link,
+                        status=Lesson.LessonStatus.SCHEDULED,
+                        created_by=self.request.user,
+                    )
+                    # save triggers model.clean for overlaps, duration, etc.
+                    copy.save()
+
+                    # Notify participants
+                    Notification.objects.create(
+                        user=copy.teacher,
+                        notification_type=Notification.NotificationType.LESSON_CREATED,
+                        title=f"New lesson assigned: {copy.title}",
+                        message=f"You have been assigned a new lesson '{copy.title}' with {copy.student.full_name} on {copy.start_time.strftime('%B %d, %Y at %H:%M')}",
+                        lesson=copy
+                    )
+                    Notification.objects.create(
+                        user=copy.student,
+                        notification_type=Notification.NotificationType.LESSON_CREATED,
+                        title=f"New lesson scheduled: {copy.title}",
+                        message=f"A new lesson '{copy.title}' has been scheduled with {copy.teacher.full_name} on {copy.start_time.strftime('%B %d, %Y at %H:%M')}",
+                        lesson=copy
+                    )
+                    created_copies += 1
+                except Exception as e:
+                    skipped += 1
+                    errors.append(str(e))
+                    continue
+
+        # Success message
+        if created_copies or skipped:
+            base_msg = f"Создано повторов: {created_copies}."
+            if skipped:
+                base_msg += f" Пропущено: {skipped} (возможны конфликты времени)."
+            messages.success(self.request, f"Lesson '{self.object.title}' created successfully! " + base_msg)
+        else:
+            messages.success(self.request, f"Lesson '{self.object.title}' created successfully!")
         return redirect(self.get_success_url())
 
 
@@ -306,17 +410,31 @@ def teacher_lesson_management(request):
         messages.error(request, "Access denied. Only teachers can view this page.")
         return redirect('accounts:dashboard')
     
+    # New: tabs (upcoming/all)
+    tab = request.GET.get('tab', 'upcoming')  # upcoming | all
+
     # Get filter parameters
-    status_filter = request.GET.get('status', '')
-    date_from = request.GET.get('date_from', '')
-    date_to = request.GET.get('date_to', '')
-    student_filter = request.GET.get('student', '')
-    
+    status_filter = (request.GET.get('status') or '').strip()
+    date_from = (request.GET.get('date_from') or '').strip()
+    date_to = (request.GET.get('date_to') or '').strip()
+    student_filter = (request.GET.get('student') or '').strip()
+    q = (request.GET.get('q') or '').strip()
+
     # Base queryset
     lessons = Lesson.objects.filter(teacher=request.user).select_related('student', 'subject').order_by('-start_time')
     
-    # Apply filters
-    if status_filter:
+    # Apply tab filter first but allow explicit status filter to override
+    if tab == 'upcoming':
+        if status_filter:
+            lessons = lessons.filter(status=status_filter)
+        else:
+            lessons = lessons.filter(status=Lesson.LessonStatus.SCHEDULED).order_by('start_time')
+    else:
+        # all: nothing special here
+        pass
+
+    # Apply status filter if provided (for 'all' or explicit selection)
+    if status_filter and tab != 'upcoming':
         lessons = lessons.filter(status=status_filter)
     
     if date_from:
@@ -335,14 +453,30 @@ def teacher_lesson_management(request):
     
     if student_filter:
         lessons = lessons.filter(student__id=student_filter)
-    
+
+    # Search by name/title (supports multiple terms)
+    if q:
+        terms = [t for t in q.split() if t]
+        for term in terms:
+            lessons = lessons.filter(
+                models.Q(student__first_name__icontains=term) |
+                models.Q(student__last_name__icontains=term) |
+                models.Q(title__icontains=term)
+            )
+
+    # Try to cast student filter to int for template comparison
+    try:
+        current_filters_student_id = int(student_filter) if student_filter else None
+    except ValueError:
+        current_filters_student_id = None
+
     # Get all students for filter dropdown
     from accounts.models import User
     students = User.objects.filter(
         role=User.UserRole.STUDENT,
         student_lessons__teacher=request.user
     ).distinct().order_by('first_name', 'last_name')
-    
+
     context = {
         'lessons': lessons,
         'students': students,
@@ -352,9 +486,13 @@ def teacher_lesson_management(request):
             'date_from': date_from,
             'date_to': date_to,
             'student': student_filter,
-        }
+            'q': q,
+        },
+        'current_filters_student_id': current_filters_student_id,
+        'current_tab': tab,
+        'today': timezone.now().date(),
     }
-    
+
     return render(request, 'scheduling/teacher_lesson_management.html', context)
 
 
@@ -364,29 +502,31 @@ def teacher_schedule(request, teacher_id):
     if not request.user.is_methodist():
         messages.error(request, "Access denied.")
         return redirect('accounts:dashboard')
-    
+
     from accounts.models import User
     teacher = get_object_or_404(User, pk=teacher_id, role=User.UserRole.TEACHER)
-    
-    # Get this week's lessons
-    from datetime import datetime, timedelta
-    today = timezone.now().date()
+
+    # Get this week's lessons in local timezone
+    today = timezone.localdate()
     start_of_week = today - timedelta(days=today.weekday())
     end_of_week = start_of_week + timedelta(days=6)
-    
+
+    start_dt = timezone.make_aware(datetime.combine(start_of_week, dt_time.min))
+    end_dt_exclusive = timezone.make_aware(datetime.combine(end_of_week + timedelta(days=1), dt_time.min))
+
     lessons = Lesson.objects.filter(
         teacher=teacher,
-        start_time__date__gte=start_of_week,
-        start_time__date__lte=end_of_week
+        start_time__gte=start_dt,
+        start_time__lt=end_dt_exclusive
     ).select_related('student', 'subject').order_by('start_time')
-    
+
     context = {
         'teacher': teacher,
         'lessons': lessons,
         'week_start': start_of_week,
         'week_end': end_of_week,
     }
-    
+
     return render(request, 'scheduling/teacher_schedule.html', context)
 
 
@@ -394,14 +534,15 @@ def teacher_schedule(request, teacher_id):
 def lesson_details_ajax(request, lesson_id):
     """AJAX endpoint for lesson details"""
     lesson = get_object_or_404(Lesson, pk=lesson_id)
-    
+
     # Check permissions
     if request.user.is_student() and lesson.student != request.user:
         return JsonResponse({'error': 'Permission denied'}, status=403)
     elif request.user.is_teacher() and lesson.teacher != request.user:
         return JsonResponse({'error': 'Permission denied'}, status=403)
-    
+
     data = {
+        'id': lesson.id,
         'title': lesson.title,
         'subject': lesson.subject.name,
         'date': lesson.start_time.strftime('%d.%m.%Y'),
@@ -417,15 +558,16 @@ def lesson_details_ajax(request, lesson_id):
         'is_completed': lesson.status == lesson.LessonStatus.COMPLETED,
         'start_iso': lesson.start_time.isoformat(),
         'end_iso': lesson.end_time.isoformat(),
+        'user_is_student': request.user.is_student(),
     }
-    
+
     # Role-based participant display
     if request.user.is_student():
         data['teacher'] = lesson.teacher.full_name
         # Student sees teacher name, not their own
     elif request.user.is_teacher():
         data['student'] = lesson.student.full_name
-        # Teacher sees student name, not their own
+        # Teacher sees student name, not их own
         # Add teacher materials download if available
         if lesson.teacher_materials:
             data['teacher_materials'] = {
@@ -442,21 +584,23 @@ def lesson_details_ajax(request, lesson_id):
                 'url': lesson.teacher_materials.url,
                 'name': lesson.teacher_materials.name.split('/')[-1]
             }
-    
+
     # Add general materials if available
     if lesson.materials:
         data['materials'] = {
             'url': lesson.materials.url,
             'name': lesson.materials.name.split('/')[-1]
         }
-    
+
     return JsonResponse(data)
 
 
 # --- NEW: Feedback API ---
 @login_required
 def feedback_pending(request):
-    """Возвращает ближайший урок (для ученика), который завершён и ещё не оценён."""
+    """Возвращает ближайший урок (для ученика), который завершён и ещё не оценён.
+    Показываем только в течение 1 часа после окончания урока.
+    """
     # Автоматически обновляем статусы уроков
     updated = _auto_complete_elapsed_lessons()
 
@@ -465,16 +609,18 @@ def feedback_pending(request):
         return JsonResponse({'pending': False, 'pending_count': 0})
 
     now = timezone.now()
-    # Получаем завершённые уроки без отзывов
+    one_hour_ago = now - timedelta(hours=1)
+    # Получаем завершённые уроки без отзывов, оконце [end_time ∈ (one_hour_ago, now]]
     lessons_qs = (
         Lesson.objects
         .filter(
             student=user,
             status=Lesson.LessonStatus.COMPLETED,
-            end_time__lt=now
+            end_time__lte=now,
+            end_time__gt=one_hour_ago
         )
         .exclude(feedbacks__user=user)
-        .select_related('teacher')  # Оптимизация запроса
+        .select_related('teacher')
         .order_by('end_time')
     )
 
@@ -491,35 +637,26 @@ def feedback_pending(request):
         })
 
     next_lesson = lessons_qs.first()
-    remind = now >= next_lesson.end_time + timedelta(hours=1)
+    expires_at = next_lesson.end_time + timedelta(hours=1)
 
-    # Создаём уведомление если прошёл час
-    if remind:
-        Notification.objects.get_or_create(
-            user=user,
-            lesson=next_lesson,
-            notification_type=Notification.NotificationType.LESSON_FEEDBACK_REMINDER,
-            defaults={
-                'title': 'Оцените прошедший урок',
-                'message': f"Пожалуйста, оцените занятие '{next_lesson.title}' с преподавателем {next_lesson.teacher.full_name}.",
-            }
-        )
-
+    # Возвращаем pending в течение часа после окончания; без баннера-напоминания
     return JsonResponse({
         'pending': True,
         'pending_count': pending_count,
-        'show_banner': remind,
+        'show_banner': True,
         'lesson': {
             'id': next_lesson.id,
             'title': next_lesson.title,
             'teacher': next_lesson.teacher.full_name,
             'ended_at': next_lesson.end_time.isoformat(),
+            'expires_at': expires_at.isoformat(),
         },
         'debug': {
             'auto_completed': updated,
             'now': now.isoformat(),
             'user': user.username,
-            'lesson_end': next_lesson.end_time.isoformat()
+            'lesson_end': next_lesson.end_time.isoformat(),
+            'expires_at': expires_at.isoformat(),
         } if settings.DEBUG else None
     })
 
@@ -529,11 +666,10 @@ def feedback_submit(request):
     """Принимает отзыв ученика по занятию.
     Поддерживает JSON (application/json) и form-encoded (обычные формы).
     """
-    # Log request for diagnostics
+    # Log request for diagnostics (do not log raw body to avoid leaking tokens/sensitive data)
     try:
-        body_preview = request.body.decode('utf-8')[:500] if request.body else ''
         header_keys = [k for k in request.META.keys() if k.startswith('HTTP_')]
-        logger.info(f"feedback_submit request: method={request.method} path={request.path} user={getattr(request.user,'username',None)} content_type={request.META.get('CONTENT_TYPE')} csrf_cookie={bool(request.COOKIES.get('csrftoken'))} csrf_header={request.META.get('HTTP_X_CSRFTOKEN')} body_preview={body_preview} headers={header_keys}")
+        logger.info(f"feedback_submit request: method={request.method} path={request.path} user={getattr(request.user,'username',None)} content_type={request.META.get('CONTENT_TYPE')} csrf_cookie={bool(request.COOKIES.get('csrftoken'))} csrf_header={request.META.get('HTTP_X_CSRFTOKEN')} headers={header_keys}")
     except Exception:
         logger.exception('Failed to log feedback_submit request')
 
@@ -601,51 +737,6 @@ def feedback_submit(request):
     return JsonResponse({'status': 'ok', 'message': 'Спасибо за отзыв'})
 
 
-@login_required
-def feedback_analytics(request):
-    if not request.user.is_methodist():
-        messages.error(request, 'Доступ запрещён')
-        return redirect('accounts:dashboard')
-
-    overall = LessonFeedback.objects.aggregate(avg=Avg('rating'), total=Count('id'))
-    recent = LessonFeedback.objects.select_related('lesson', 'user').order_by('-created_at')[:100]
-
-    per_teacher = (
-        LessonFeedback.objects.filter(is_teacher=False)
-        .values('lesson__teacher')
-        .annotate(avg=Avg('rating'), cnt=Count('id'))
-        .order_by('-avg')
-    )
-
-    # Map teacher id to name for template convenience
-    teacher_names = {}
-    from django.contrib.auth import get_user_model
-    User = get_user_model()
-    teacher_ids = [t['lesson__teacher'] for t in per_teacher if t.get('lesson__teacher')]
-    if teacher_ids:
-        qs = User.objects.filter(id__in=teacher_ids).values('id', 'first_name', 'last_name')
-        for r in qs:
-            teacher_names[r['id']] = f"{r['first_name']} {r['last_name']}"
-
-    # Attach teacher display name
-    per_teacher_list = []
-    for t in per_teacher:
-        tid = t.get('lesson__teacher')
-        per_teacher_list.append({
-            'teacher_id': tid,
-            'teacher_name': teacher_names.get(tid, ''),
-            'avg': t.get('avg'),
-            'cnt': t.get('cnt')
-        })
-
-    context = {
-        'overall_avg': overall.get('avg'),
-        'overall_total': overall.get('total') or 0,
-        'recent_feedbacks': recent,
-        'per_teacher': per_teacher_list,
-    }
-    return render(request, 'scheduling/feedback_analytics.html', context)
-
 
 # --- Stubs for views referenced in urls.py but not yet implemented ---
 @login_required
@@ -687,23 +778,73 @@ def reschedule_lesson(request, lesson_id):
     """Simple reschedule: accept new start/end via POST and set status to RESCHEDULED."""
     lesson = get_object_or_404(Lesson, pk=lesson_id)
     if not request.user.is_methodist():
+        # Для fetch ожидаем JSON, для обычного запроса — редирект
+        if request.method == 'POST':
+            return JsonResponse({'success': False, 'error': 'Доступ запрещён'}, status=403)
         messages.error(request, 'Доступ запрещён')
         return redirect('scheduling:lesson_detail', pk=lesson_id)
+
     if request.method == 'POST':
-        start = request.POST.get('start_time')
-        end = request.POST.get('end_time')
+        # Поддерживаем два способа: (1) new_start_date + new_start_time, (2) start_time (ISO)
+        new_date = request.POST.get('new_start_date')
+        new_time = request.POST.get('new_start_time')
+        start_iso = request.POST.get('start_time')
+        end_iso = request.POST.get('end_time')
         try:
-            if start:
+            # Вычисляем новую дату начала
+            if new_date and new_time:
+                # Комбинируем локальные дату и время
+                naive_dt = datetime.strptime(f"{new_date} {new_time}", "%Y-%m-%d %H:%M")
+                new_start = timezone.make_aware(naive_dt)
+            elif start_iso:
+                new_start = timezone.make_aware(datetime.fromisoformat(start_iso))
+            else:
+                raise ValueError('Не передана новая дата/время начала')
+
+            # Длительность сохраняем, если новый конец не передан
+            if end_iso:
+                new_end = timezone.make_aware(datetime.fromisoformat(end_iso))
+            else:
+                duration = lesson.end_time - lesson.start_time
+                new_end = new_start + duration
+
+            # Сохраняем оригинальные времена только один раз
+            if not lesson.original_start_time:
                 lesson.original_start_time = lesson.start_time
-                lesson.start_time = timezone.make_aware(timezone.datetime.fromisoformat(start))
-            if end:
+            if not lesson.original_end_time:
                 lesson.original_end_time = lesson.end_time
-                lesson.end_time = timezone.make_aware(timezone.datetime.fromisoformat(end))
+
+            lesson.start_time = new_start
+            lesson.end_time = new_end
             lesson.status = lesson.LessonStatus.RESCHEDULED
             lesson.save()
-            messages.success(request, 'Урок перенесён')
+
+            # Уведомления (необязательно)
+            try:
+                Notification.objects.create(
+                    user=lesson.teacher,
+                    notification_type=Notification.NotificationType.LESSON_UPDATED,
+                    title=f"Занятие перенесено: {lesson.title}",
+                    message=f"Новое время: {lesson.start_time.strftime('%d.%m.%Y %H:%M')} - {lesson.end_time.strftime('%H:%M')}",
+                    lesson=lesson
+                )
+                Notification.objects.create(
+                    user=lesson.student,
+                    notification_type=Notification.NotificationType.LESSON_UPDATED,
+                    title=f"Занятие перенесено: {lesson.title}",
+                    message=f"Новое время: {lesson.start_time.strftime('%d.%m.%Y %H:%M')} - {lesson.end_time.strftime('%H:%M')}",
+                    lesson=lesson
+                )
+            except Exception:
+                # Логируем, но не падаем
+                logger.exception('Не удалось создать уведомления о переносе')
+
+            return JsonResponse({'success': True})
         except Exception as e:
-            messages.error(request, f'Ошибка при переносе: {e}')
+            logger.exception('Ошибка при переносе занятия')
+            return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+    # Не-POST: обычный переход
     return redirect('scheduling:lesson_detail', pk=lesson_id)
 
 
@@ -711,10 +852,40 @@ def reschedule_lesson(request, lesson_id):
 def cancel_lesson(request, lesson_id):
     lesson = get_object_or_404(Lesson, pk=lesson_id)
     if not request.user.is_methodist():
+        if request.method == 'POST':
+            return JsonResponse({'success': False, 'error': 'Доступ запрещён'}, status=403)
         messages.error(request, 'Доступ запрещён')
         return redirect('scheduling:lesson_detail', pk=lesson_id)
-    lesson.status = lesson.LessonStatus.CANCELLED
-    lesson.save()
+
+    if request.method == 'POST':
+        try:
+            lesson.status = lesson.LessonStatus.CANCELLED
+            lesson.save()
+            # Можно логировать/уведомить
+            try:
+                Notification.objects.create(
+                    user=lesson.teacher,
+                    notification_type=Notification.NotificationType.LESSON_UPDATED,
+                    title=f"Занятие отменено: {lesson.title}",
+                    message=f"Занятие {lesson.title} было отменено методистом.",
+                    lesson=lesson
+                )
+                Notification.objects.create(
+                    user=lesson.student,
+                    notification_type=Notification.NotificationType.LESSON_UPDATED,
+                    title=f"Занятие отменено: {lesson.title}",
+                    message=f"Занятие {lesson.title} было отменено методистом.",
+                    lesson=lesson
+                )
+            except Exception:
+                logger.exception('Не удалось создать уведомления об отмене')
+
+            return JsonResponse({'success': True})
+        except Exception as e:
+            logger.exception('Ошибка при отмене занятия')
+            return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+    # Для не-POST оставляем текущую логику
     messages.success(request, 'Урок отменён')
     return redirect('scheduling:lesson_list')
 
@@ -757,8 +928,14 @@ def methodist_weekly_lessons(request):
     if not request.user.is_methodist():
         messages.error(request, 'Доступ запрещён')
         return redirect('accounts:dashboard')
-    today = timezone.now().date()
+    today = timezone.localdate()
     week_start = today - timedelta(days=today.weekday())
     week_end = week_start + timedelta(days=6)
-    lessons = Lesson.objects.filter(start_time__date__range=[week_start, week_end]).select_related('teacher', 'student').order_by('start_time')
+    start_dt = timezone.make_aware(datetime.combine(week_start, dt_time.min))
+    end_dt_exclusive = timezone.make_aware(datetime.combine(week_end + timedelta(days=1), dt_time.min))
+    lessons = Lesson.objects.filter(
+        start_time__gte=start_dt,
+        start_time__lt=end_dt_exclusive
+    ).select_related('teacher', 'student').order_by('start_time')
     return render(request, 'scheduling/methodist_weekly_lessons.html', {'lessons': lessons, 'week_start': week_start, 'week_end': week_end})
+

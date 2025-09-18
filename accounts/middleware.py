@@ -1,5 +1,25 @@
+from django.conf import settings
+from django.http import HttpResponse
 from django.utils import timezone as dj_timezone
 from django.utils.deprecation import MiddlewareMixin
+
+
+class UploadSizeLimitMiddleware(MiddlewareMixin):
+    """Reject requests where Content-Length exceeds configured UPLOAD_MAX_FILE_SIZE.
+    This is a quick early check to avoid accepting huge uploads. Note: chunked uploads
+    without Content-Length won't be caught here, so we also provide an upload handler.
+    """
+    def process_request(self, request):
+        try:
+            cl = request.META.get('CONTENT_LENGTH')
+            if cl:
+                if int(cl) > getattr(settings, 'UPLOAD_MAX_FILE_SIZE', 200 * 1024 * 1024):
+                    return HttpResponse('Request Entity Too Large', status=413)
+        except (ValueError, TypeError):
+            # Unable to parse Content-Length; continue to upload handlers for enforcement
+            pass
+        return None
+
 
 class UserTimezoneMiddleware(MiddlewareMixin):
     """Активирует таймзону пользователя или обнаруженную в сессии.
@@ -23,4 +43,3 @@ class UserTimezoneMiddleware(MiddlewareMixin):
     def process_response(self, request, response):
         # Явно отключать не нужно, Django сам сбрасывает локально.
         return response
-

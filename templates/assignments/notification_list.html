@@ -6,122 +6,40 @@
 
 {% block content %}
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-    <h1 class="h2"><i class="bi bi-bell"></i> {% trans "Уведомления" %}</h1>
-    <div class="btn-toolbar mb-2 mb-md-0">
-        {% if notifications %}
-        <div class="btn-group me-2">
-            <button class="btn btn-outline-secondary btn-sm" onclick="markAllAsRead()">
-                <i class="bi bi-check-all"></i> {% trans "Отметить все как прочитанные" %}
-            </button>
-        </div>
-        {% endif %}
+    <h1 class="h2">{% trans "Уведомления" %}</h1>
+    <div>
+        <button class="btn btn-sm btn-outline-primary" onclick="markAllAsRead()">
+            <i class="bi bi-check2-all"></i> {% trans "Отметить все как прочитанные" %}
+        </button>
     </div>
 </div>
 
-{% if notifications %}
 <div class="row">
     <div class="col-12">
         <div class="card">
-            <div class="card-body p-0">
-                {% for notification in notifications %}
-                <div class="notification-item-full {% if not notification.is_read %}notification-unread{% endif %}" 
-                     id="notification-{{ notification.id }}">
-                    <div class="p-3 border-bottom">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <div class="notification-meta d-flex align-items-center">
-                                <span class="badge bg-{{ notification.notification_type|notification_type_color }} me-2">
-                                    <i class="bi bi-{{ notification.notification_type|notification_type_icon }}"></i>
-                                </span>
-                                <!-- Клиентское форматирование: data-utc-дата -->
-                                <small class="text-muted notif-time" data-utc-dt="{{ notification.sent_at|date:'c' }}">...</small>
-                            </div>
-                            {% if not notification.is_read %}
-                            <button class="btn btn-sm btn-outline-primary" 
-                                    onclick="markAsRead({{ notification.id }})">
-                                <i class="bi bi-check"></i> {% trans "Отметить как прочитанное" %}
-                            </button>
-                            {% endif %}
+            <div class="card-body">
+                {% if notifications %}
+                <div class="list-group">
+                    {% for n in notifications %}
+                    <div id="notification-{{ n.id }}" class="list-group-item notification-item-full {% if not n.is_read %}notification-unread{% endif %}">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h5 class="mb-1 notification-title">{{ n.title|default:"Уведомление" }}</h5>
+                            <small class="text-muted notif-time" data-utc-dt="{{ n.sent_at|date:'c' }}">{{ n.sent_at }}</small>
                         </div>
-                        
-                        <h6 class="notification-title mb-2">{{ notification.title }}</h6>
-                        <p class="notification-message mb-0">{{ notification.message }}</p>
-                        
-                        {% if notification.lesson %}
-                        <div class="mt-2">
-                            <a href="{% url 'scheduling:lesson_detail' notification.lesson.id %}" 
-                               class="btn btn-sm btn-outline-info">
-                                <i class="bi bi-calendar-event"></i> {% trans "Перейти к занятию" %}
-                            </a>
-                        </div>
-                        {% endif %}
-                        
-                        {% if notification.assignment %}
-                        <div class="mt-2">
-                            <a href="{% url 'assignments:assignment_detail' notification.assignment.id %}" 
-                               class="btn btn-sm btn-outline-warning">
-                                <i class="bi bi-journal-text"></i> {% trans "Перейти к заданию" %}
-                            </a>
-                        </div>
+                        <p class="mb-1 notification-message">{{ n.message }}</p>
+                        {% if not n.is_read %}
+                        <button class="btn btn-sm btn-outline-secondary" onclick="markAsRead({{ n.id }})">{% trans "Отметить как прочитанное" %}</button>
                         {% endif %}
                     </div>
+                    {% endfor %}
                 </div>
-                {% endfor %}
+                {% else %}
+                <p class="text-muted">{% trans "У вас пока нет уведомлений" %}</p>
+                {% endif %}
             </div>
         </div>
     </div>
 </div>
-
-<!-- Pagination -->
-{% if is_paginated %}
-<nav aria-label="{% trans 'Навигация по страницам' %}" class="mt-4">
-    <ul class="pagination justify-content-center">
-        {% if page_obj.has_previous %}
-        <li class="page-item">
-            <a class="page-link" href="?page={{ page_obj.previous_page_number }}">
-                <i class="bi bi-chevron-left"></i> {% trans "Предыдущая" %}
-            </a>
-        </li>
-        {% endif %}
-        
-        {% for page_num in page_obj.paginator.page_range %}
-        {% if page_num == page_obj.number %}
-        <li class="page-item active">
-            <span class="page-link">{{ page_num }}</span>
-        </li>
-        {% elif page_num > page_obj.number|add:'-3' and page_num < page_obj.number|add:'3' %}
-        <li class="page-item">
-            <a class="page-link" href="?page={{ page_num }}">{{ page_num }}</a>
-        </li>
-        {% endif %}
-        {% endfor %}
-        
-        {% if page_obj.has_next %}
-        <li class="page-item">
-            <a class="page-link" href="?page={{ page_obj.next_page_number }}">
-                {% trans "Следующая" %} <i class="bi bi-chevron-right"></i>
-            </a>
-        </li>
-        {% endif %}
-    </ul>
-</nav>
-{% endif %}
-
-{% else %}
-<div class="row">
-    <div class="col-12">
-        <div class="card text-center">
-            <div class="card-body py-5">
-                <i class="bi bi-bell-slash display-1 text-muted mb-3"></i>
-                <h4 class="text-muted mb-3">{% trans "Нет уведомлений" %}</h4>
-                <p class="text-muted">{% trans "Здесь будут отображаться ваши уведомления" %}</p>
-                <a href="{% url 'accounts:dashboard' %}" class="btn btn-primary">
-                    <i class="bi bi-house"></i> {% trans "Вернуться на главную" %}
-                </a>
-            </div>
-        </div>
-    </div>
-</div>
-{% endif %}
 
 <style>
 .notification-item-full { transition: all 0.2s ease; }
@@ -132,12 +50,20 @@
 </style>
 
 <script>
+// Use redeclare-safe global to avoid conflicts
+if (typeof window.langCode === 'undefined' || !window.langCode) { window.langCode = '{{ request.LANGUAGE_CODE|default:"ru" }}'; }
+function getCookie(name){
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return null;
+}
 function markAsRead(notificationId) {
-    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
-    if (!csrfToken) return;
-    fetch(`/assignments/notifications/${notificationId}/read/`, {
+    const csrf = getCookie('csrftoken');
+    if (!csrf) return;
+    fetch(`/${window.langCode}/assignments/notifications/${notificationId}/read/`, {
         method: 'POST',
-        headers: { 'X-CSRFToken': csrfToken.value }
+        headers: { 'X-CSRFToken': csrf }
     }).then(r=>r.json()).then(d=>{
         if (d.status === 'success') {
             const el = document.getElementById(`notification-${notificationId}`);
@@ -150,11 +76,11 @@ function markAsRead(notificationId) {
     });
 }
 function markAllAsRead() {
-    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
-    if (!csrfToken) return;
-    fetch('/assignments/notifications/mark-all-read/', {
+    const csrf = getCookie('csrftoken');
+    if (!csrf) return;
+    fetch(`/${window.langCode}/assignments/notifications/mark-all-read/`, {
         method: 'POST',
-        headers: { 'X-CSRFToken': csrfToken.value }
+        headers: { 'X-CSRFToken': csrf }
     }).then(r=>r.json()).then(d=>{
         if (d.status === 'success') {
             document.querySelectorAll('.notification-unread').forEach(n=>{
@@ -179,14 +105,6 @@ function localizeNotificationTimes(){
 }
 
 document.addEventListener('DOMContentLoaded', ()=>{
-    // Добавляем скрытый CSRF если нет
-    if (!document.querySelector('[name=csrfmiddlewaretoken]')) {
-        const csrfInput = document.createElement('input');
-        csrfInput.type = 'hidden';
-        csrfInput.name = 'csrfmiddlewaretoken';
-        csrfInput.value = '{{ csrf_token }}';
-        document.body.appendChild(csrfInput);
-    }
     localizeNotificationTimes();
 });
 </script>

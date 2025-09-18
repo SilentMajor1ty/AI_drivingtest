@@ -46,6 +46,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'accounts.middleware.UploadSizeLimitMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.locale.LocaleMiddleware',
@@ -84,8 +85,12 @@ WSGI_APPLICATION = 'driving_school.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.environ.get('POSTGRES_DB', 'd8jerb7b1oqu0s'),
+        'USER': os.environ.get('POSTGRES_USER', 'u57qs5kkjvahrs'),
+        'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'pe11a894dc8d1c6ade12de2870239fba063310dee9b727be910172a86111d5461'),
+        'HOST': os.environ.get('POSTGRES_HOST', 'c4uljrch9k8rpm.cluster-czz5s0kz4scl.eu-west-1.rds.amazonaws.com'),
+        'PORT': os.environ.get('POSTGRES_PORT', '5432'),
     }
 }
 
@@ -134,6 +139,10 @@ LOCALE_PATHS = [
 
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+# NEW: позволяем static-файлам подхватываться из templates, где лежит logo.png
+STATICFILES_DIRS = [
+    BASE_DIR / 'templates',
+]
 
 # Media files
 MEDIA_URL = '/media/'
@@ -173,6 +182,13 @@ TIME_ZONE = 'UTC'
 FILE_UPLOAD_MAX_MEMORY_SIZE = 200 * 1024 * 1024  # 200MB
 DATA_UPLOAD_MAX_MEMORY_SIZE = 200 * 1024 * 1024  # 200MB
 FILE_UPLOAD_MAX_MEMORY_SIZE_LIMIT = 200 * 1024 * 1024  # 200MB limit per file
+
+# Register custom upload handlers to enforce per-file limits early
+FILE_UPLOAD_HANDLERS = [
+    'accounts.upload_handlers.MaxSizeFileUploadHandler',
+    'django.core.files.uploadhandler.MemoryFileUploadHandler',
+    'django.core.files.uploadhandler.TemporaryFileUploadHandler',
+]
 
 # Logging configuration for admin actions
 LOGGING = {

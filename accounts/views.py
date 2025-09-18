@@ -8,6 +8,7 @@ from django.core.exceptions import PermissionDenied
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods, require_POST
 from django.db import models
+from django.db.models import F
 import json
 import pytz
 
@@ -23,23 +24,87 @@ def dashboard(request):
     user = request.user
     
     if user.is_student():
-        # Student dashboard - show upcoming lessons and assignments
+        # Student dashboard - show upcoming lessons (today & tomorrow), nearest first
+        from django.utils import timezone
+        from datetime import timedelta
         from scheduling.models import Lesson
         from assignments.models import Assignment
         
-        upcoming_lessons = Lesson.objects.filter(
-            student=user,
-            status=Lesson.LessonStatus.SCHEDULED
-        ).select_related('teacher', 'subject')[:5]
-        
+        now = timezone.now()
+        today = timezone.localdate()
+        tomorrow = today + timedelta(days=1)
+
+        # Top 3 upcoming lessons (today & tomorrow)
+        upcoming_lessons = (
+            Lesson.objects
+            .filter(
+                student=user,
+                status__in=[Lesson.LessonStatus.SCHEDULED, Lesson.LessonStatus.RESCHEDULED],
+                start_time__gte=now,
+                start_time__date__lte=tomorrow,
+            )
+            .select_related('teacher', 'subject')
+            .order_by('start_time')[:3]
+        )
+
+        # Top 3 active assignments ordered by nearest deadline first
         pending_assignments = Assignment.objects.filter(
             student=user,
             status__in=[Assignment.AssignmentStatus.ASSIGNED, Assignment.AssignmentStatus.IN_PROGRESS]
-        ).select_related('lesson')[:5]
-        
+        ).select_related('lesson').order_by(F('due_date').asc(nulls_last=True), 'id')[:3]
+
+        # Counts for greeting
+        today_lessons_count = Lesson.objects.filter(
+            student=user,
+            status__in=[Lesson.LessonStatus.SCHEDULED, Lesson.LessonStatus.RESCHEDULED],
+            start_time__date=today
+        ).count()
+        active_assignments_count = Assignment.objects.filter(
+            student=user,
+            status__in=[Assignment.AssignmentStatus.ASSIGNED, Assignment.AssignmentStatus.IN_PROGRESS]
+        ).count()
+
+        # Timeline for next 7 days
+        start_day = today
+        end_day = today + timedelta(days=6)
+        timeline_qs = (
+            Lesson.objects
+            .filter(
+                student=user,
+                status__in=[Lesson.LessonStatus.SCHEDULED, Lesson.LessonStatus.RESCHEDULED],
+                start_time__date__range=[start_day, end_day]
+            )
+            .select_related('teacher', 'subject')
+            .order_by('start_time')
+        )
+        # Group by day
+        lessons_by_date = {}
+        for l in timeline_qs:
+            d = timezone.localtime(l.start_time).date()
+            lessons_by_date.setdefault(d, []).append(l)
+        timeline_days = []
+        for i in range(7):
+            d = start_day + timedelta(days=i)
+            day_lessons = lessons_by_date.get(d, [])
+            # Prepare light-weight items for template
+            items = [
+                {
+                    'id': le.id,
+                    'title': le.title,
+                    'start': timezone.localtime(le.start_time),
+                    'end': timezone.localtime(le.end_time),
+                    'subject': getattr(le.subject, 'name', ''),
+                }
+                for le in day_lessons
+            ]
+            timeline_days.append({'date': d, 'lessons': items})
+
         context = {
             'upcoming_lessons': upcoming_lessons,
             'pending_assignments': pending_assignments,
+            'today_lessons_count': today_lessons_count,
+            'active_assignments_count': active_assignments_count,
+            'timeline_days': timeline_days,
         }
         return render(request, 'accounts/student_dashboard.html', context)
     
@@ -78,13 +143,21 @@ def dashboard(request):
         total_teachers = User.objects.filter(role=User.UserRole.TEACHER).count()
         total_students = User.objects.filter(role=User.UserRole.STUDENT).count()
         
-        recent_lessons = Lesson.objects.select_related('teacher', 'student', 'subject')[:10]
-        
+        # Последние 7 проведённых занятий (COMPLETED)
+        recent_lessons = (
+            Lesson.objects
+            .filter(status=Lesson.LessonStatus.COMPLETED)
+            .select_related('teacher', 'student', 'subject')
+            .order_by('-start_time')[:7]
+        )
+        completed_lessons_count = Lesson.objects.filter(status=Lesson.LessonStatus.COMPLETED).count()
+
         context = {
             'total_users': total_users,
             'total_teachers': total_teachers,
             'total_students': total_students,
             'recent_lessons': recent_lessons,
+            'completed_lessons_count': completed_lessons_count,
         }
         return render(request, 'accounts/methodist_dashboard.html', context)
     
@@ -132,7 +205,35 @@ class UserListView(LoginRequiredMixin, MethodistRequiredMixin, ListView):
     paginate_by = 20
     
     def get_queryset(self):
-        return User.objects.select_related('profile').order_by('-created_at')
+        qs = User.objects.select_related('profile').order_by('-created_at')
+        # Role filter
+        role = (self.request.GET.get('role') or '').strip()
+        valid_roles = {choice[0] for choice in User.UserRole.choices}
+        if role in valid_roles:
+            qs = qs.filter(role=role)
+        # Name search (first/last/middle/username)
+        q = (self.request.GET.get('q') or '').strip()
+        if q:
+            terms = [t for t in q.split() if t]
+            for term in terms:
+                qs = qs.filter(
+                    models.Q(first_name__icontains=term) |
+                    models.Q(last_name__icontains=term) |
+                    models.Q(middle_name__icontains=term) |
+                    models.Q(username__icontains=term)
+                )
+        return qs
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        role = (self.request.GET.get('role') or '').strip()
+        q = (self.request.GET.get('q') or '').strip()
+        ctx.update({
+            'roles': User.UserRole.choices,
+            'selected_role': role,
+            'q': q,
+        })
+        return ctx
 
 
 class UserCreateView(LoginRequiredMixin, MethodistRequiredMixin, CreateView):

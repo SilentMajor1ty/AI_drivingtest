@@ -26,7 +26,10 @@ class UserCreateForm(forms.ModelForm):
             'middle_name': forms.TextInput(attrs={'class': 'form-control'}),
             'role': forms.Select(attrs={'class': 'form-select'}),
         }
-    
+        help_texts = {
+            'username': 'Только буквы, цифры и символы @/./+/-/_.',
+        }
+
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
@@ -63,4 +66,7 @@ class UserUpdateForm(forms.ModelForm):
             'middle_name': forms.TextInput(attrs={'class': 'form-control'}),
             'role': forms.Select(attrs={'class': 'form-select'}),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+        help_texts = {
+            'username': 'Только буквы, цифры и символы @/./+/-/_.',
         }

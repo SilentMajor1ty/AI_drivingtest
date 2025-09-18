@@ -1,16 +1,103 @@
 {% extends 'base.html' %}
 {% load i18n %}
 
-{% block title %}Assignments - {% trans "Школа" %}{% endblock %}
+{% block title %}Задания - {% trans "Школа" %}{% endblock %}
 
 {% block content %}
+<style>
+  .card {
+    border-radius: 16px;
+    box-shadow: 0 4px 18px rgba(16,24,40,.10);
+    border: 1px solid #e7ecf3;
+  }
+  .card-header {
+    background: linear-gradient(180deg, #f8fafc 0%, #eef3f9 100%);
+    border-bottom: 1px solid #e9edf5;
+    border-radius: 16px 16px 0 0;
+    padding: 1rem 1.5rem;
+  }
+  .card-title {
+    font-weight: 700;
+    font-size: 1.2rem;
+    color: #1a2340;
+  }
+  .list-group-item {
+    border-radius: 10px;
+    margin-bottom: 10px;
+    border: 1px solid #e7ecf3;
+    box-shadow: 0 2px 8px rgba(16,24,40,.06);
+    transition: box-shadow 0.18s, background 0.18s;
+  }
+  .list-group-item-action:hover, .list-group-item-action:focus {
+    box-shadow: 0 4px 16px rgba(13,110,253,.12);
+    background: #f4f8ff;
+  }
+  .list-group-item-danger {
+    background: #fff0f0;
+    border-color: #f5c2c7;
+  }
+  .list-group-item-warning {
+    background: #fffbe6;
+    border-color: #ffe69c;
+  }
+  .list-group-item-success {
+    background: #e6ffed;
+    border-color: #b6f5c9;
+  }
+  .fw-semibold {
+    font-weight: 600;
+    font-size: 1.05rem;
+    color: #1a2340;
+  }
+  .assignment-status {
+    font-size: 0.95rem;
+    font-weight: 500;
+    padding: 2px 10px;
+    border-radius: 8px;
+    display: inline-block;
+    margin-bottom: 2px;
+  }
+  .assignment-status.overdue {
+    background: #f8d7da;
+    color: #842029;
+  }
+  .assignment-status.submitted {
+    background: #d1e7dd;
+    color: #0f5132;
+  }
+  .assignment-status.active {
+    background: #e7f1ff;
+    color: #084298;
+  }
+  .assignment-date {
+    font-size: 0.95rem;
+    color: #6c757d;
+    margin-bottom: 2px;
+  }
+  .btn-toolbar .btn-group {
+    gap: 0.5rem;
+  }
+  .btn-group .btn {
+    min-width: 110px;
+    font-weight: 500;
+    border-radius: 8px;
+  }
+  .badge {
+    font-size: 0.85rem;
+    border-radius: 6px;
+    padding: 2px 8px;
+    background: #e7ecf3;
+    color: #1a2340;
+  }
+</style>
+
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-    <h1 class="h2"><i class="bi bi-journal-text"></i> Assignments</h1>
+    <h1 class="h2" style="font-weight:700;color:#1a2340;">Задания</h1>
     <div class="btn-toolbar mb-2 mb-md-0">
         {% if not user.is_student %}
         <div class="btn-group me-2">
-            <a href="{% url 'assignments:assignment_create' %}" class="btn btn-sm btn-primary">
-                <i class="bi bi-plus"></i> Create Assignment
+            <a href="{% url 'assignments:assignment_create' %}" class="btn btn-sm btn-primary" style="border-radius:8px;font-weight:500;">
+                Создать задание
             </a>
         </div>
         {% endif %}
@@ -23,134 +110,45 @@
             <div class="card-header">
                 <div class="d-flex justify-content-between align-items-center">
                     <h5 class="card-title mb-0">
-                        <i class="bi bi-list-task"></i> 
-                        {% if user.is_student %}Your Assignments{% elif user.is_teacher %}Student Assignments{% else %}All Assignments{% endif %}
+                        {% if user.is_student %}Ваши задания{% elif user.is_teacher %}Задания студентов{% else %}Все задания{% endif %}
                     </h5>
                     <div class="btn-group" role="group" aria-label="Assignment filters">
                         <a href="?status=all" class="btn btn-sm {% if current_filter == 'all' %}btn-primary{% else %}btn-outline-primary{% endif %}">
-                            Все <span class="badge bg-light text-dark">{{ filter_counts.all }}</span>
+                            Предстоящие <span class="badge">{{ filter_counts.all }}</span>
                         </a>
                         <a href="?status=overdue" class="btn btn-sm {% if current_filter == 'overdue' %}btn-danger{% else %}btn-outline-danger{% endif %}">
-                            Просроченные <span class="badge bg-light text-dark">{{ filter_counts.overdue }}</span>
+                            Просрочено <span class="badge">{{ filter_counts.overdue }}</span>
                         </a>
-                        <a href="?status=graded" class="btn btn-sm {% if current_filter == 'graded' %}btn-success{% else %}btn-outline-success{% endif %}">
-                            Оцененные <span class="badge bg-light text-dark">{{ filter_counts.graded }}</span>
+                        <a href="?status=submitted" class="btn btn-sm {% if current_filter == 'submitted' %}btn-success{% else %}btn-outline-success{% endif %}">
+                            Сдано <span class="badge">{{ filter_counts.submitted }}</span>
                         </a>
                     </div>
                 </div>
             </div>
             <div class="card-body">
                 {% if assignments %}
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Assignment</th>
-                                    {% if user.is_teacher or user.is_methodist %}
-                                        <th>Student</th>
-                                    {% endif %}
-                                    <th>Subject</th>
-                                    <th>Due Date</th>
-                                    <th>Status</th>
-                                    <th>Grade</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for assignment in assignments %}
-                                <tr {% if assignment.is_overdue %}class="table-danger"{% elif assignment.days_until_due <= 2 and assignment.status != 'completed' %}class="table-warning"{% endif %}>
-                                    <td>
-                                        <strong>{{ assignment.title }}</strong>
-                                        {% if assignment.description %}
-                                            <br><small class="text-muted">{{ assignment.description|truncatewords:15 }}</small>
-                                        {% endif %}
-                                    </td>
-                                    {% if user.is_teacher or user.is_methodist %}
-                                        <td>{{ assignment.student.full_name }}</td>
-                                    {% endif %}
-                                    <td>{{ assignment.lesson.subject.name }}</td>
-                                    <td>
-                                        {{ assignment.due_date|date:"M d, Y" }}
-                                        <br><small class="text-muted">{{ assignment.due_date|time:"H:i" }}</small>
-                                        {% if assignment.is_overdue %}
-                                            <br><span class="badge bg-danger">OVERDUE</span>
-                                        {% elif assignment.days_until_due <= 2 and assignment.status != 'completed' %}
-                                            <br><span class="badge bg-warning">DUE SOON</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-{% if assignment.status == 'completed' %}success{% elif assignment.status == 'submitted' %}info{% elif assignment.status == 'in_progress' %}warning{% else %}secondary{% endif %}">
-                                            {{ assignment.get_status_display }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        {% if assignment.grade %}
-                                            <span class="badge bg-{% if assignment.grade >= 8 %}success{% elif assignment.grade >= 6 %}warning{% else %}danger{% endif %} fs-6">
-                                                {{ assignment.grade }}/10
-                                            </span>
-                                        {% else %}
-                                            <span class="text-muted">-</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <div class="btn-group btn-group-sm">
-                                            <a href="{% url 'assignments:assignment_detail' assignment.pk %}" class="btn btn-outline-info btn-sm">
-                                                <i class="bi bi-eye"></i> View
-                                            </a>
-                                            {% if user.is_student and assignment.status != 'completed' %}
-                                                <a href="{% url 'assignments:submit_assignment' assignment.pk %}" class="btn btn-outline-success btn-sm">
-                                                    <i class="bi bi-upload"></i> Submit
-                                                </a>
-                                            {% endif %}
-                                        </div>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                    <div class="list-group">
+                        {% for assignment in assignments %}
+                        <a href="{% url 'assignments:assignment_detail' assignment.pk %}"
+                           class="list-group-item list-group-item-action py-3 {% if current_filter == 'overdue' and assignment.is_overdue %}list-group-item-danger{% elif assignment.days_until_due <= 2 and assignment.status != 'completed' and assignment.status != 'submitted' and assignment.status != 'reviewed' %}list-group-item-warning{% elif assignment.status == 'submitted' and current_filter != 'submitted' %}list-group-item-success{% endif %}">
+                            <div class="d-flex align-items-center">
+                              <div class="flex-grow-1 me-3">
+                                <div class="fw-semibold">{{ assignment.title }}</div>
+                                <div class="text-muted small">{% if assignment.lesson and assignment.lesson.subject %}{{ assignment.lesson.subject.name }}{% else %}—{% endif %}</div>
+                              </div>
+                            <div class="text-end me-3">
+                              <span class="assignment-date">{{ assignment.due_date|date:"d.m.Y H:i" }}</span>
+                              <!-- Статус скрыт в списке: показываем только дату -->
+                              {% if current_filter == 'submitted' and assignment.grade %}
+                              <div class="mt-1" style="font-size:0.92rem; font-weight:600; color:#1a2340;">Оценка: {{ assignment.grade }}/10</div>
+                              {% endif %}
+                            </div>
+                          </div>
+                        </a>
+                        {% endfor %}
                     </div>
-                    
-                    {% if is_paginated %}
-                        <nav aria-label="Page navigation">
-                            <ul class="pagination justify-content-center">
-                                {% if page_obj.has_previous %}
-                                    <li class="page-item">
-                                        <a class="page-link" href="?page=1">First</a>
-                                    </li>
-                                    <li class="page-item">
-                                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
-                                    </li>
-                                {% endif %}
-                                
-                                <li class="page-item active">
-                                    <span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
-                                </li>
-                                
-                                {% if page_obj.has_next %}
-                                    <li class="page-item">
-                                        <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
-                                    </li>
-                                    <li class="page-item">
-                                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Last</a>
-                                    </li>
-                                {% endif %}
-                            </ul>
-                        </nav>
-                    {% endif %}
                 {% else %}
-                    <div class="text-center py-4">
-                        <i class="bi bi-journal-x fs-1 text-muted"></i>
-                        <h5 class="mt-3">No assignments found</h5>
-                        <p class="text-muted">
-                            {% if user.is_student %}
-                                Your assignments will appear here when they are assigned.
-                            {% elif user.is_methodist or user.is_teacher %}
-                                <a href="{% url 'assignments:assignment_create' %}" class="btn btn-primary">
-                                    <i class="bi bi-plus"></i> Create First Assignment
-                                </a>
-                            {% endif %}
-                        </p>
-                    </div>
+                    <div class="text-center py-4 text-muted">Нет заданий для отображения</div>
                 {% endif %}
             </div>
         </div>

@@ -1,92 +1,127 @@
 {% extends 'base.html' %}
 {% load i18n %}
 
-{% block title %}Student Dashboard - {% trans "Школа" %}{% endblock %}
+{% block title %}Панель ученика - {% trans "Школа" %}{% endblock %}
 
 {% block content %}
+<style>
+/* Unified soft cards */
+.dashboard-card, .item-card { border: 0; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.06); }
+/* Section titles with icons8 */
+.section-title { font-size: 1.25rem; font-weight: 700; display: flex; align-items: center; gap: .5rem; }
+.section-title .icon-accent { width: 18px; height: 18px; }
+.icon { height: 1em; width: auto; vertical-align: -0.15em; }
+/* Secondary text lighter/smaller */
+.subtext { font-size: 0.875rem; color: #6c757d; }
+/* Item title emphasised */
+.item-title { font-size: 1rem; font-weight: 700; }
+/* Sub-cards inside lists */
+.item-card { border: 0; border-radius: 10px; box-shadow: 0 4px 14px rgba(0,0,0,0.05); }
+.item-card + .item-card .card-body { border-top: 1px solid #f1f3f5; }
+/* Визуальная кликабельность */
+.clickable-card { cursor: pointer; transition: box-shadow .15s ease, transform .15s ease; }
+.clickable-card:hover { box-shadow: 0 10px 28px rgba(0,0,0,0.08); transform: translateY(-1px); }
+.clickable-card:hover .card-body { background-color: #f8fafc; }
+/* Round join button (slightly smaller for harmony) */
+.btn-circle { width: 34px; height: 34px; padding: 0; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; }
+.btn-circle.btn-sm { width: 30px; height: 30px; }
+.btn-circle img { width: 14px; height: 14px; }
+/* Due soon chip */
+.badge-duesoon { background-color: #fd7e14; color: #fff; }
+.badge-duesoon:hover, .badge-duesoon:focus { background-color: #e86f0d; color: #fff; text-decoration: none; }
+/* Larger avatar for page heading (increased for better harmony with H2) */
+.avatar-title { width:36px; height:36px; vertical-align:-6px; }
+/* View All button restyle */
+.btn-view-all {
+    --btn-color: #0d6efd;
+    color: var(--btn-color);
+    background: #ffffff;
+    border: 1px solid rgba(13,110,253,0.25);
+    border-radius: 999px;
+    padding: .425rem .85rem;
+    font-weight: 600;
+    letter-spacing: .01em;
+    box-shadow: 0 4px 12px rgba(13,110,253,0.08);
+    transition: all .15s ease;
+}
+.btn-view-all:hover, .btn-view-all:focus {
+    color: #ffffff;
+    background: var(--btn-color);
+    border-color: var(--btn-color);
+    box-shadow: 0 6px 18px rgba(13,110,253,0.25);
+    text-decoration: none;
+}
+.btn-view-all i { margin-right: .35rem; }
+/* Compact variant for View All button (slightly smaller) */
+.btn-view-all-sm { padding: .32rem .65rem; font-size: .95rem; }
+</style>
+
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-    <h1 class="h2"><i class="bi bi-person-circle"></i> Student Dashboard</h1>
-    <div class="btn-toolbar mb-2 mb-md-0">
-        <div class="btn-group me-2">
-            <small class="text-muted">Welcome back, {{ user.full_name }}</small>
-        </div>
+    <div>
+        <h1 class="h2 mb-1">Панель ученика</h1>
+        <div class="text-muted">Добро пожаловать, {{ user.first_name|default:user.full_name }}! У вас сегодня {{ active_assignments_count }} активных заданий.</div>
     </div>
 </div>
 
 <div class="row">
     <div class="col-md-6">
-        <div class="card">
-            <div class="card-header bg-success text-white">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-calendar-event"></i> Upcoming Lessons
-                </h5>
-            </div>
+        <div class="card dashboard-card">
             <div class="card-body">
+                <h5 class="section-title mb-3">Ближайшие занятия</h5>
                 {% if upcoming_lessons %}
                     {% for lesson in upcoming_lessons %}
-                        <div class="lesson-card card mb-2">
+                        <div class="item-card card mb-2">
                             <div class="card-body py-2">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
-                                        <h6 class="mb-1">{{ lesson.title }}</h6>
-                                        <small class="text-muted">
-                                            <i class="bi bi-person"></i> {{ lesson.teacher.full_name }} |
-                                            <i class="bi bi-book"></i> {{ lesson.subject.name }}
-                                        </small>
+                                        <h6 class="mb-1 item-title">{{ lesson.title }}</h6>
+                                        <div class="subtext">
+                                            <img src="https://img.icons8.com/fluency/16/user.png" alt="" class="icon me-1"/> {{ lesson.teacher.full_name }} |
+                                             {{ lesson.subject.name }}
+                                        </div>
                                     </div>
                                     <div class="text-end">
                                         <small class="fw-bold d-block">
                                             {{ lesson.start_time|date:"M d, Y" }}<br>
                                             {{ lesson.start_time|time:"H:i" }}
                                         </small>
-                                        {% if lesson.zoom_link %}
-                                            <a href="{{ lesson.zoom_link }}" target="_blank" 
-                                               class="btn btn-sm btn-success mt-1"
-                                               onclick="handleVideoCall({{ lesson.id }}, '{{ lesson.zoom_link }}')">
-                                                <i class="bi bi-camera-video"></i> Присоединиться
-                                            </a>
-                                        {% endif %}
                                     </div>
                                 </div>
                             </div>
                         </div>
                     {% endfor %}
-                    <a href="{% url 'scheduling:lesson_list' %}" class="btn btn-outline-success btn-sm">
-                        <i class="bi bi-eye"></i> View All Lessons
+                    <a href="{% url 'scheduling:lesson_list' %}" class="btn btn-view-all btn-view-all-sm">
+                        Показать все занятия
                     </a>
                 {% else %}
-                    <p class="text-muted text-center">No upcoming lessons scheduled.</p>
+                    <p class="text-muted text-center">Нет запланированных занятий.</p>
                 {% endif %}
             </div>
         </div>
     </div>
     
     <div class="col-md-6">
-        <div class="card">
-            <div class="card-header bg-warning text-dark">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-journal-text"></i> Pending Assignments
-                </h5>
-            </div>
+        <div class="card dashboard-card">
             <div class="card-body">
+                <h5 class="section-title mb-3">Активные задания</h5>
                 {% if pending_assignments %}
                     {% for assignment in pending_assignments %}
-                        <div class="card mb-2 {% if assignment.is_overdue %}border-danger{% endif %}">
+                        <div class="item-card card mb-2 clickable-card" data-href="{% url 'assignments:assignment_detail' assignment.id %}">
                             <div class="card-body py-2">
                                 <div class="d-flex justify-content-between">
                                     <div>
-                                        <h6 class="mb-1">{{ assignment.title }}</h6>
-                                        <small class="text-muted">
-                                            <i class="bi bi-book"></i> {{ assignment.lesson.subject.name }}
-                                        </small>
+                                        <h6 class="mb-1 item-title">{{ assignment.title }}</h6>
+                                        <div class="subtext">
+                                            {{ assignment.lesson.subject.name }}
+                                        </div>
                                     </div>
                                     <div class="text-end">
-                                        <small class="{% if assignment.is_overdue %}text-danger fw-bold{% elif assignment.days_until_due <= 2 %}text-warning fw-bold{% endif %}">
-                                            Due: {{ assignment.due_date|date:"M d, Y" }}
+                                        <small class="{% if assignment.is_overdue %}text-danger fw-bold{% endif %}">
+                                            Срок: {{ assignment.due_date|date:"d.m.Y" }}
                                             {% if assignment.is_overdue %}
-                                                <br><span class="badge bg-danger">OVERDUE</span>
+                                                <br><span class="badge bg-danger">Просрочено</span>
                                             {% elif assignment.days_until_due <= 2 %}
-                                                <br><span class="badge bg-warning">DUE SOON</span>
+                                                <br><span class="badge badge-duesoon">Скоро</span>
                                             {% endif %}
                                         </small>
                                     </div>
@@ -94,56 +129,17 @@
                             </div>
                         </div>
                     {% endfor %}
-                    <a href="{% url 'assignments:assignment_list' %}" class="btn btn-outline-warning btn-sm">
-                        <i class="bi bi-eye"></i> View All Assignments
+                    <a href="{% url 'assignments:assignment_list' %}" class="btn btn-view-all btn-view-all-sm">
+                        Показать все задания
                     </a>
                 {% else %}
-                    <p class="text-muted text-center">No pending assignments.</p>
+                    <p class="text-muted text-center">Нет активных заданий.</p>
                 {% endif %}
             </div>
         </div>
     </div>
 </div>
 
-<div class="row mt-4">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-info-circle"></i> Quick Actions
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-3">
-                        <a href="{% url 'scheduling:calendar' %}" class="btn btn-outline-primary btn-lg w-100 mb-2">
-                            <i class="bi bi-calendar3"></i><br>
-                            View Calendar
-                        </a>
-                    </div>
-                    <div class="col-md-3">
-                        <a href="{% url 'assignments:assignment_list' %}" class="btn btn-outline-warning btn-lg w-100 mb-2">
-                            <i class="bi bi-journal-text"></i><br>
-                            My Assignments
-                        </a>
-                    </div>
-                    <div class="col-md-3">
-                        <a href="{% url 'accounts:profile' %}" class="btn btn-outline-info btn-lg w-100 mb-2">
-                            <i class="bi bi-person"></i><br>
-                            My Profile
-                        </a>
-                    </div>
-                    <div class="col-md-3">
-                        <a href="{% url 'assignments:notification_list' %}" class="btn btn-outline-secondary btn-lg w-100 mb-2">
-                            <i class="bi bi-bell"></i><br>
-                            Notifications
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 
 <!-- Problem Report Modal -->
 <div class="modal fade" id="problemReportModal" tabindex="-1">
@@ -227,5 +223,16 @@ function submitProblemReport() {
         alert('Ошибка при отправке отчета');
     });
 }
+
+// Навигация по клику на всю карточку задания (кроме внутренних ссылок/кнопок)
+document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('.clickable-card[data-href]').forEach(function(card){
+        card.addEventListener('click', function(e){
+            if (e.target.closest('a, button, .btn, input, textarea, select, label')) return;
+            const href = card.getAttribute('data-href');
+            if (href) window.location.href = href;
+        });
+    });
+});
 </script>
 {% endblock %}

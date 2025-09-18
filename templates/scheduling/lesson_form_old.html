@@ -1,13 +1,13 @@
 {% extends 'base.html' %}
 
-{% block title %}Schedule Lesson - {% trans "Школа" %}{% endblock %}
+{% block title %}Планирование занятия - {% trans "Школа" %}{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-    <h1 class="h2"><i class="bi bi-calendar-plus"></i> Schedule Lesson</h1>
+    <h1 class="h2">Планирование занятия</h1>
     <div class="btn-toolbar mb-2 mb-md-0">
         <a href="{% url 'scheduling:lesson_list' %}" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-arrow-left"></i> Back to Lessons
+            <i class="bi bi-arrow-left"></i> Назад к занятиям
         </a>
     </div>
 </div>
@@ -17,7 +17,7 @@
         <div class="card">
             <div class="card-header">
                 <h5 class="card-title mb-0">
-                    <i class="bi bi-calendar-event"></i> Lesson Details
+                    <i class="bi bi-calendar-event"></i> Детали занятия
                 </h5>
             </div>
             <div class="card-body">
@@ -26,7 +26,7 @@
                     
                     <div class="mb-3">
                         <label for="{{ form.title.id_for_label }}" class="form-label">
-                            <i class="bi bi-bookmark"></i> Lesson Title *
+                            <i class="bi bi-bookmark"></i> Название занятия *
                         </label>
                         {{ form.title }}
                         {% if form.title.errors %}
@@ -37,7 +37,7 @@
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label for="{{ form.subject.id_for_label }}" class="form-label">
-                                <i class="bi bi-book"></i> Subject *
+                                <i class="bi bi-book"></i> Предмет *
                             </label>
                             {{ form.subject }}
                             {% if form.subject.errors %}
@@ -46,7 +46,7 @@
                         </div>
                         <div class="col-md-6">
                             <label for="{{ form.teacher.id_for_label }}" class="form-label">
-                                <i class="bi bi-person-badge"></i> Teacher *
+                                <i class="bi bi-person-badge"></i> Преподаватель *
                             </label>
                             {{ form.teacher }}
                             {% if form.teacher.errors %}
@@ -57,7 +57,7 @@
                     
                     <div class="mb-3">
                         <label for="{{ form.student.id_for_label }}" class="form-label">
-                            <i class="bi bi-person"></i> Student *
+                            <i class="bi bi-person"></i> Ученик *
                         </label>
                         {{ form.student }}
                         {% if form.student.errors %}
@@ -68,7 +68,7 @@
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label for="{{ form.start_time.id_for_label }}" class="form-label">
-                                <i class="bi bi-clock"></i> Start Time *
+                                <i class="bi bi-clock"></i> Время начала *
                             </label>
                             {{ form.start_time }}
                             {% if form.start_time.errors %}
@@ -77,7 +77,7 @@
                         </div>
                         <div class="col-md-6">
                             <label for="{{ form.end_time.id_for_label }}" class="form-label">
-                                <i class="bi bi-clock"></i> End Time *
+                                <i class="bi bi-clock"></i> Время окончания *
                             </label>
                             {{ form.end_time }}
                             {% if form.end_time.errors %}
@@ -88,7 +88,7 @@
                     
                     <div class="mb-3">
                         <label for="{{ form.description.id_for_label }}" class="form-label">
-                            <i class="bi bi-file-text"></i> Description
+                            <i class="bi bi-file-text"></i> Описание
                         </label>
                         {{ form.description }}
                         {% if form.description.errors %}
@@ -98,7 +98,7 @@
                     
                     <div class="mb-3">
                         <label for="{{ form.zoom_link.id_for_label }}" class="form-label">
-                            <i class="bi bi-camera-video"></i> Zoom/Meet Link
+                            <i class="bi bi-camera-video"></i> Ссылка Zoom/Meet
                         </label>
                         {{ form.zoom_link }}
                         {% if form.zoom_link.errors %}
@@ -108,39 +108,39 @@
                     
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-save"></i> Schedule Lesson
+                            <i class="bi bi-save"></i> Запланировать
                         </button>
                         <a href="{% url 'scheduling:lesson_list' %}" class="btn btn-secondary">
-                            <i class="bi bi-x-circle"></i> Cancel
+                            <i class="bi bi-x-circle"></i> Отмена
                         </a>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-    
+                     </div>
+                 </form>
+             </div>
+         </div>
+     </div>
+
     <div class="col-md-4">
         <div class="card">
             <div class="card-header">
                 <h5 class="card-title mb-0">
-                    <i class="bi bi-info-circle"></i> Guidelines
+                    <i class="bi bi-info-circle"></i> Рекомендации
                 </h5>
             </div>
             <div class="card-body">
-                <h6>Scheduling Rules:</h6>
+                <h6>Правила планирования:</h6>
                 <ul class="small">
-                    <li>Minimum lesson duration: 30 minutes</li>
-                    <li>No overlapping lessons for teachers or students</li>
-                    <li>15-minute break required between lessons</li>
-                    <li>Times are displayed in each user's timezone</li>
+                    <li>Минимальная продолжительность занятия: 30 минут</li>
+                    <li>Занятия преподавателя и ученика не должны пересекаться</li>
+                    <li>Требуется 15-минутный перерыв между занятиями</li>
+                    <li>Время отображается в часовом поясе пользователя</li>
                 </ul>
                 
-                <h6 class="mt-3">Required Fields:</h6>
+                <h6 class="mt-3">Обязательные поля:</h6>
                 <p class="small text-muted">
-                    All fields marked with * are required to schedule a lesson.
+                    Все поля, отмеченные *, обязательны для заполнения.
                 </p>
             </div>
         </div>
     </div>
-</div>
+ </div>
 {% endblock %}

@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Отзывы" %} - {{ teacher.first_name }} {{ teacher.last_name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+  <h1 class="h4 mb-0">{% trans "Отзывы по преподавателю" %}: {{ teacher.first_name }} {{ teacher.last_name }}</h1>
+  <div class="btn-toolbar mb-2 mb-md-0">
+    <a href="{% url 'assignments:methodist_analytics' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-arrow-left"></i> {% trans "Назад к аналитике" %}
+    </a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <strong>{% trans "Все отзывы студентов" %}</strong>
+  </div>
+  <div class="card-body">
+    {% if feedbacks %}
+      <div class="list-group">
+        {% for fb in feedbacks %}
+        <div class="list-group-item">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <div class="mb-1">
+                <strong>{{ fb.lesson.title }}</strong>
+                <small class="text-muted ms-2">{{ fb.created_at|date:'d.m.Y H:i' }}</small>
+              </div>
+              <div class="small text-muted">{% trans "Ученик" %}: {{ fb.user.full_name }}</div>
+              {% if fb.comment %}
+                <div class="mt-2">{{ fb.comment }}</div>
+              {% endif %}
+            </div>
+            <span class="badge bg-primary ms-3" style="min-width: 42px;">{{ fb.rating }}/10</span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="text-muted">{% trans "Отзывов пока нет" %}</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

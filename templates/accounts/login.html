@@ -1,84 +1,176 @@
 {% extends 'base_auth.html' %}
-{% load i18n %}
+{% load i18n static %}
 
-{% block title %}{% trans "Вход" %} - {% trans "Школа" %}{% endblock %}
+{% block title %}{% trans "Вход" %} - Edison Academy{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-6 col-lg-4">
-        <div class="card">
-            <div class="card-header bg-primary text-white text-center">
-                <h3><i class="bi bi-mortarboard"></i> {% trans "Школа" %}</h3>
-                <p class="mb-0">{% trans "Войдите в свой аккаунт" %}</p>
+<div class="row justify-content-center py-4">
+  <div class="col-12 col-md-10 col-lg-8 col-xl-6">
+    <div class="card auth-card rounded-4 overflow-hidden">
+      <div class="row g-0">
+        <div class="col-md-5 d-none d-md-flex align-items-center justify-content-center auth-side p-4 text-white">
+          <div class="text-center px-2">
+            <div class="brand-circle mb-3">
+              <img src="{% static 'logo.png' %}" alt="Логотип">
             </div>
-            <div class="card-body">
-                <form method="post">
-                    {% csrf_token %}
-                    
-                    {% if form.errors %}
-                        <div class="alert alert-danger">
-                            {{ form.errors }}
-                        </div>
-                    {% endif %}
-                    
-                    <div class="mb-3">
-                        <label for="{{ form.username.id_for_label }}" class="form-label">
-                            <i class="bi bi-person"></i> {% trans "Имя пользователя" %}
-                        </label>
-                        {{ form.username }}
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="{{ form.password.id_for_label }}" class="form-label">
-                            <i class="bi bi-lock"></i> {% trans "Пароль" %}
-                        </label>
-                        {{ form.password }}
-                    </div>
-                    
-                    <div class="d-grid">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-box-arrow-in-right"></i> {% trans "Войти" %}
-                        </button>
-                    </div>
-                </form>
-                
-                <div class="mt-4 text-center">
-                    <small class="text-muted">
-                        {% trans "Демонстрационные аккаунты" %}:<br>
-                        {% trans "Методист" %}: methodist / methodist123<br>
-                        {% trans "Инструктор" %}: teacher1 / teacher123<br>
-                        {% trans "Ученик" %}: student1 / student123
-                    </small>
-                </div>
-            </div>
+            <h3 class="fw-bold mb-2">{% trans "Добро пожаловать!" %}</h3>
+            <p class="mb-0 opacity-75">Начните своё обучение в Edison Academy прямо сейчас</p>
+          </div>
         </div>
+        <div class="col-md-7 p-0">
+          <div class="form-surface p-4 p-lg-5 h-100">
+            <h4 class="fw-semibold mb-1">{% trans "Вход в аккаунт" %}</h4>
+            {% if form.non_field_errors %}
+            <div class="alert alert-danger py-2 small" role="alert">
+              {{ form.non_field_errors|striptags }}
+            </div>
+            {% endif %}
+            <form method="post" novalidate>
+              {% csrf_token %}
+              {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+              <div class="mb-3">
+                <label for="id_username" class="form-label">{% trans "Имя пользователя" %}</label>
+                <div class="input-group input-group-lg">
+                  <span class="input-group-text bg-light"><i class="bi bi-person"></i></span>
+                  <input type="text" name="username" autocomplete="username"
+                         class="form-control form-control-lg" id="id_username"
+                         placeholder="{% trans 'Введите имя пользователя' %}"
+                         value="{{ form.username.value|default_if_none:'' }}">
+                </div>
+                {% if form.username.errors %}
+                <div class="text-danger small mt-1">{{ form.username.errors|striptags }}</div>
+                {% endif %}
+              </div>
+              <div class="mb-3">
+                <label for="id_password" class="form-label">{% trans "Пароль" %}</label>
+                <div class="input-group input-group-lg">
+                  <span class="input-group-text bg-light"><i class="bi bi-lock"></i></span>
+                  <input type="password" name="password" autocomplete="current-password"
+                         class="form-control form-control-lg" id="id_password"
+                         placeholder="{% trans 'Введите пароль' %}">
+                  <button class="btn btn-outline-secondary" type="button" id="togglePassword" title="{% trans 'Показать пароль' %}">
+                    <i class="bi bi-eye"></i>
+                  </button>
+                </div>
+                {% if form.password.errors %}
+                <div class="text-danger small mt-1">{{ form.password.errors|striptags }}</div>
+                {% endif %}
+              </div>
+              <div class="d-flex align-items-center justify-content-between mb-4">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="rememberMe" name="remember">
+                  <label class="form-check-label" for="rememberMe">{% trans "Запомнить меня" %}</label>
+                </div>
+              </div>
+              <button type="submit" class="btn btn-brand btn-lg w-100">
+                {% trans "Войти" %}
+              </button>
+              <div class="text-center mt-3 text-muted small">
+                {% trans "Нужна помощь? Свяжитесь с администратором." %}
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
     </div>
+    <div class="text-center text-white-50 small mt-3">
+      © {% now 'Y' %} Edison Academy
+    </div>
+  </div>
 </div>
 
-<!-- Automatic timezone detection script -->
+<style>
+  /* Круглый бренд-контейнер для логотипа: ровная обводка */
+  .brand-circle {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: transparent; /* в цвет фона страницы */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1rem auto;
+    border: 1px solid rgba(255,255,255,.30); /* чуть контрастнее и равномерно */
+  }
+  .brand-circle img {
+    width: 62%;
+    height: 62%;
+    object-fit: contain;
+    display: block;
+  }
+
+  /* Менее заметная подсветка фокуса у полей */
+  .form-control:focus {
+    border-color: rgba(102,126,234,0.28);
+    box-shadow: 0 0 0 1px rgba(102,126,234,0.10);
+    outline: none;
+  }
+  .input-group .form-control:focus { z-index: 1; }
+
+  /* Кнопка показать пароль: лёгкая, но более контрастная обводка; hover/active — как в Bootstrap */
+  #togglePassword.btn { border-color: #d1d5db; border-left-width: 0; box-shadow: none !important; }
+  #togglePassword .bi { font-size: 0.9rem; line-height: 1; }
+
+  /* Стабильный вид карточки авторизации */
+  .auth-card {
+    position: relative;
+    border-radius: 16px;
+    overflow: hidden;
+    background:
+      linear-gradient(0deg, rgba(0,0,0,0), rgba(0,0,0,0)) padding-box,
+      linear-gradient(135deg,
+        #7b5cff 0%,
+        #746df9 35%,
+        #6a84f4 65%,
+        #5ab0ea 100%
+      ) border-box;
+    border: 0.5px solid transparent;
+    box-shadow: 0 16px 40px rgba(0,0,0,0.18), 0 6px 16px rgba(0,0,0,0.12);
+  }
+
+  .auth-side { background: transparent; }
+
+  .form-surface {
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    height: 100%;
+  }
+
+  .seam-blur { display: none !important; }
+
+  .auth-card .form-label { font-size: 0.9rem; }
+  .auth-card ::placeholder { font-size: 0.9rem; }
+  .auth-card .form-control.form-control-lg { font-size: 0.9rem; }
+
+  .input-group-text .bi { font-size: 0.9rem; line-height: 1; }
+
+  .btn-brand {
+    background: linear-gradient(135deg, #7b5cff 0%, #5ab0ea 100%);
+    color: #fff; border: none;
+    box-shadow: 0 8px 18px rgba(102, 126, 234, 0.20);
+  }
+  .btn-brand:hover { filter: brightness(1.05); color: #fff; }
+
+  /* Единый цвет границ для элементов input-group */
+  .input-group-text, .form-control.form-control-lg, .input-group .btn { border-color: #e9ecef; }
+</style>
+{% endblock %}
+
+{% block extra_js %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Detect user timezone and store it in sessionStorage
-    if (typeof Intl !== 'undefined' && Intl.DateTimeFormat) {
-        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        sessionStorage.setItem('userTimezone', timezone);
-        
-        // Send timezone to server via AJAX for future use
-        if (timezone) {
-            fetch('/set_timezone/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-                },
-                body: JSON.stringify({
-                    timezone: timezone
-                })
-            }).catch(function(error) {
-                console.log('Timezone detection failed:', error);
-            });
-        }
+  (function(){
+    const toggle = document.getElementById('togglePassword');
+    const pwd = document.getElementById('id_password');
+    if(toggle && pwd){
+      toggle.addEventListener('click', function(){
+        const isPw = pwd.getAttribute('type') === 'password';
+        pwd.setAttribute('type', isPw ? 'text' : 'password');
+        const icon = this.querySelector('i');
+        if(icon){ icon.classList.toggle('bi-eye'); icon.classList.toggle('bi-eye-slash'); }
+        this.setAttribute('title', isPw ? '{% trans "Скрыть пароль" %}' : '{% trans "Показать пароль" %}');
+      });
     }
-});
+  })();
 </script>
 {% endblock %}

@@ -24,4 +24,5 @@ urlpatterns = [
     
     # Analytics
     path('analytics/', views.methodist_analytics, name='methodist_analytics'),
+    path('analytics/teacher/<int:teacher_id>/', views.teacher_feedback_list, name='teacher_feedback_list'),
 ]

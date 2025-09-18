@@ -1,27 +1,27 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<h2>Lesson Details</h2>
+<h2>Детали занятия</h2>
 
-<p><strong>Title:</strong> {{ lesson.title }}</p>
-<p><strong>Subject:</strong> {{ lesson.subject.name }}</p>
-<p><strong>Teacher:</strong> {{ lesson.teacher.full_name }}</p>
-<p><strong>Student:</strong> {{ lesson.student.full_name }}</p>
-<p><strong>Start Time:</strong> {{ lesson.start_time }}</p>
-<p><strong>End Time:</strong> {{ lesson.end_time }}</p>
-<p><strong>Description:</strong> {{ lesson.description }}</p>
+<p><strong>Название:</strong> {{ lesson.title }}</p>
+<p><strong>Предмет:</strong> {{ lesson.subject.name }}</p>
+<p><strong>Преподаватель:</strong> {{ lesson.teacher.full_name }}</p>
+<p><strong>Ученик:</strong> {{ lesson.student.full_name }}</p>
+<p><strong>Время начала:</strong> {{ lesson.start_time }}</p>
+<p><strong>Время окончания:</strong> {{ lesson.end_time }}</p>
+<p><strong>Описание:</strong> {{ lesson.description }}</p>
 
-<h3>Attached Files</h3>
+<h3>Прикреплённые файлы</h3>
 <ul>
     {% for file in lesson_files_all %}
     <li><a href="{{ file.file.url }}" download>{{ file.original_name }}</a></li>
     {% empty %}
-    <li>No files attached.</li>
+    <li>Файлы отсутствуют.</li>
     {% endfor %}
 </ul>
 
 {% if lesson_files_teacher %}
-<h3>Teacher Materials</h3>
+<h3>Материалы преподавателя</h3>
 <ul>
     {% for file in lesson_files_teacher %}
     <li><a href="{{ file.file.url }}" download>{{ file.original_name }}</a></li>
@@ -87,7 +87,7 @@
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title">Пожаловаться на занятие</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{% trans 'Закрыть' %}"></button>
                     </div>
                     <div class="modal-body">
                         <form id="reportProblemForm">

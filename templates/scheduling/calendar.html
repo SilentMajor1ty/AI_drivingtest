@@ -5,7 +5,7 @@
 
 {% block content %}
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-    <h1 class="h2"><i class="bi bi-calendar3"></i> {% trans "Календарь" %}</h1>
+    <h1 class="h2">{% trans "Календарь" %}</h1>
     <div class="btn-toolbar mb-2 mb-md-0">
         {% if user.is_methodist %}
         <div class="btn-group me-2">
@@ -23,7 +23,7 @@
         <div class="card">
             <div class="card-body py-2">
                 <div class="d-flex justify-content-between align-items-center">
-                    <a href="?week={{ prev_week }}" class="btn btn-outline-secondary">
+                    <a href="?week={{ prev_week }}" class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1">
                         <i class="bi bi-chevron-left"></i> {% trans "Предыдущая неделя" %}
                     </a>
                     
@@ -40,7 +40,7 @@
                         </small>
                     </div>
                     
-                    <a href="?week={{ next_week }}" class="btn btn-outline-secondary">
+                    <a href="?week={{ next_week }}" class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1">
                         {% trans "Следующая неделя" %} <i class="bi bi-chevron-right"></i>
                     </a>
                 </div>
@@ -49,84 +49,51 @@
     </div>
 </div>
 
-<!-- Weekly Calendar Grid -->
+<!-- Weekly Calendar Grid with time gutter -->
 <div class="row">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-clock"></i> 
-                    {% if user.is_student %}Ваши занятия{% elif user.is_teacher %}Ваше расписание{% else %}Все занятия{% endif %}
-                </h5>
-            </div>
-            <div class="card-body p-0">
-                <div class="weekly-calendar">
-                    {% for day_date, day_lessons in lessons_by_day.items %}
-                    <div class="day-column">
-                        <div class="day-header">
-                            <div class="day-name">
-                                {% if day_date == today %}
-                                    <strong class="text-primary">{{ day_date|date:"l" }}</strong>
-                                {% else %}
-                                    {{ day_date|date:"l" }}
-                                {% endif %}
-                            </div>
-                            <div class="day-date">
-                                {{ day_date|date:"d.m" }}
-                            </div>
-                        </div>
-                        <div class="day-lessons">
-                            {% for lesson in day_lessons %}
-                            <div class="lesson-item {% if lesson.start_time.date == today %}today{% endif %}" 
-                                 onclick="showLessonDetails({{ lesson.id }})">
-                                <div class="lesson-time">
-                                    {{ lesson.start_time|time:"H:i" }} - {{ lesson.end_time|time:"H:i" }}
-                                </div>
-                                <div class="lesson-title">
-                                    {{ lesson.title|truncatewords:3 }}
-                                </div>
-                                <div class="lesson-subject">
-                                    {{ lesson.subject.name }}
-                                </div>
-                                <div class="lesson-participant">
-                                    {% if user.is_student %}
-                                        {{ lesson.teacher.full_name|truncatewords:2 }}
-                                    {% elif user.is_teacher %}
-                                        {{ lesson.student.full_name|truncatewords:2 }}
-                                    {% else %}
-                                        {{ lesson.teacher.full_name|truncatewords:1 }} / {{ lesson.student.full_name|truncatewords:1 }}
-                                    {% endif %}
-                                </div>
-                                <div class="lesson-status">
-                                    <!-- Статус не выводится в карточке календаря -->
-                                </div>
-                                {% if lesson.zoom_link %}
-                                <div class="lesson-actions mt-1">
-                                    <a
-                                       class="btn btn-xs btn-success join-btn disabled"
-                                       data-link="{{ lesson.zoom_link }}"
-                                       data-start="{{ lesson.start_time|date:'c' }}"
-                                       data-end="{{ lesson.end_time|date:'c' }}"
-                                       title="Станет активной за 5 минут до начала"
-                                       onclick="event.stopPropagation(); return false;">
-                                        <i class="bi bi-camera-video"></i>
-                                    </a>
-                                </div>
-                                {% endif %}
-                            </div>
-                            {% empty %}
-                            <div class="no-lessons text-muted text-center p-3">
-                                <i class="bi bi-calendar-x"></i>
-                                <small>{% trans "Нет занятий" %}</small>
-                            </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                    {% endfor %}
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="card-title mb-0">{% if user.is_student %}Ваши занятия{% elif user.is_teacher %}Ваше расписание{% else %}Все занятия{% endif %}</h5>
+      </div>
+      <div class="card-body p-0">
+        <div class="weekly-calendar">
+          <div class="time-gutter"><div class="time-gutter-inner"></div></div>
+          <div class="days-grid">
+            {% for day_date, day_lessons in lessons_by_day.items %}
+            <div class="day-column">
+              <div class="day-header">
+                <div class="day-name">
+                  {% if day_date|date:"Y-m-d" == today|date:"Y-m-d" %}<strong class="text-primary">{{ day_date|date:"l" }}</strong>{% else %}{{ day_date|date:"l" }}{% endif %}
                 </div>
+                <div class="day-date">{{ day_date|date:"d.m" }}</div>
+              </div>
+              <div class="day-lessons" data-day="{{ day_date|date:'Y-m-d' }}">
+                {% for lesson in day_lessons %}
+                <div class="lesson-item {% if lesson.start_time|date:"Y-m-d" == today|date:"Y-m-d" %}today{% endif %}"
+                     data-id="{{ lesson.id }}" data-start="{{ lesson.start_time|date:'c' }}" data-end="{{ lesson.end_time|date:'c' }}"
+                     onclick="showLessonDetails({{ lesson.id }})">
+                  <div class="lesson-title">{{ lesson.title|truncatewords:3 }}</div>
+                  <div class="lesson-time">{{ lesson.start_time|time:"H:i" }} - {{ lesson.end_time|time:"H:i" }}</div>
+                </div>
+                {% empty %}
+                <div class="no-lessons text-muted text-center p-3"><i class="bi bi-calendar-x"></i><small>{% trans "Нет занятий" %}</small></div>
+                {% endfor %}
+              </div>
             </div>
+            {% endfor %}
+          </div>
         </div>
+      </div>
     </div>
+  </div>
+</div>
+
+<!-- Floating live lesson card -->
+<div id="liveLessonCard" class="live-lesson-card d-none" aria-live="polite">
+  <div class="ll-header">Занятие началось</div>
+  <div class="ll-body"><div class="ll-title" id="llTitle">—</div><div class="ll-time text-muted" id="llTime">—</div></div>
+  <div class="ll-actions"><a id="llJoin" class="btn btn-success btn-sm disabled" href="#" target="_blank" rel="noopener">Присоединиться</a><button id="llDismiss" class="btn btn-outline-secondary btn-sm">Скрыть</button></div>
 </div>
 
 <!-- Lesson Details Modal -->
@@ -134,8 +101,8 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Детали занятия</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <h5 class="modal-title">Информация о занятии</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{% trans 'Закрыть' %}"></button>
             </div>
             <div class="modal-body" id="lessonDetailsContent">
                 <!-- Content will be loaded here -->
@@ -145,382 +112,249 @@
 </div>
 
 <style>
-.weekly-calendar {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 1px;
-    background: #e9ecef;
-    min-height: 500px;
-}
+  :root { --gutter-w: 60px; --ppm: 1; --gutter-offset: 84px; }
+  .weekly-calendar { display: grid; grid-template-columns: var(--gutter-w) 1fr; }
+  .time-gutter { position: relative; border-right: 1px solid #e9ecef; background:#fff; }
+  .time-gutter-inner { position: relative; }
+  .time-tick { position: absolute; left: 0; right: 0; height: 0; border-top: 1px solid rgba(30,41,59,.18); }
+  .time-tick .label { position: absolute; right: 6px; top: -8px; font-size: .72rem; color:#64748b; background:#fff; padding:0 2px; font-weight: normal; }
+  .time-tick.last { border-top: 1px solid rgba(30,41,59,.18); }
+  .time-tick.last .label { font-weight: normal; color: #64748b; top: -8px; }
+  .time-subtick { position: absolute; left: 0; right: 0; height: 0; border-top: 1px dashed rgba(30,41,59,.10); }
+  .time-gutter-inner { min-height: calc(24*60px + 40px); }
 
-.day-column {
-    background: white;
-    display: flex;
-    flex-direction: column;
-    min-height: 500px;
-}
-
-.day-header {
-    padding: 15px 10px;
-    background: #f8f9fa;
-    border-bottom: 1px solid #e9ecef;
-    text-align: center;
-    position: sticky;
-    top: 0;
-    z-index: 10;
-}
-
-.day-name {
-    font-weight: 500;
-    font-size: 0.9rem;
-    margin-bottom: 5px;
-}
-
-.day-date {
-    font-size: 1.1rem;
-    font-weight: bold;
-    color: #495057;
-}
-
-.day-lessons {
-    flex: 1;
-    padding: 10px;
-    overflow-y: auto;
-}
-
-.lesson-item {
-    background: #f8f9fa;
-    border: 1px solid #e9ecef;
-    border-radius: 6px;
-    padding: 8px;
-    margin-bottom: 8px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    position: relative;
-}
-
-.lesson-item:hover {
-    background: #e9ecef;
-    transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.lesson-item.today {
-    border-left: 4px solid #0d6efd;
-    background: #e7f1ff;
-}
-
-.lesson-time {
-    font-size: 0.8rem;
-    font-weight: bold;
-    color: #0d6efd;
-    margin-bottom: 4px;
-}
-
-.lesson-title {
-    font-weight: 500;
-    font-size: 0.85rem;
-    margin-bottom: 3px;
-    line-height: 1.2;
-}
-
-.lesson-subject {
-    font-size: 0.75rem;
-    color: #6c757d;
-    margin-bottom: 3px;
-}
-
-.lesson-participant {
-    font-size: 0.7rem;
-    color: #495057;
-    margin-bottom: 5px;
-}
-
-.lesson-status {
-    margin-bottom: 5px;
-}
-
-.lesson-status .badge {
-    font-size: 0.6rem;
-    padding: 2px 6px;
-}
-
-.lesson-actions .btn-xs {
-    padding: 2px 6px;
-    font-size: 0.7rem;
-}
-
-.no-lessons {
-    font-size: 0.8rem;
-}
-
-/* Fix overlapping content */
-@media (max-width: 768px) {
-    .weekly-calendar {
-        grid-template-columns: 1fr;
-        gap: 10px;
-    }
-    
-    .day-column {
-        min-height: auto;
-    }
-    
-    .day-header {
-        position: relative;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        text-align: left;
-    }
-}
-
-/* Ensure date numbers don't overlap content */
-.day-date {
+  .days-grid { display: grid; grid-template-columns: repeat(7,1fr); gap:1px; background:#e9ecef; }
+  .day-column { background:#fff; display:flex; flex-direction:column; }
+  .day-header { padding: 15px 10px; background:#f8f9fa; border-bottom:1px solid #e9ecef; text-align:center; position:sticky; top:0; z-index:10; }
+  .day-name { font-weight:500; font-size:.9rem; margin-bottom:5px; }
+  .day-date { font-size:1.1rem; font-weight:bold; color:#495057; }
+  .day-lessons { position:relative; padding:12px; overflow:visible; background-image:
+      repeating-linear-gradient(to bottom, rgba(30,41,59,.18) 0, rgba(30,41,59,.18) 1px, transparent 1px, transparent 60px),
+      repeating-linear-gradient(to bottom, rgba(30,41,59,.10) 0, rgba(30,41,59,.10) 1px, transparent 1px, transparent 30px);
+    background-size:100% 60px, 100% 30px; background-position: 0 0, 0 0; background-repeat:repeat; }
+  /* Восстановлены исходные размеры карточек уроков */
+  .lesson-item { position:absolute; left:6px; right:6px; background:#f9f9fa; border:1px solid #e9ecef; border-left:4px solid #94a3b8; border-radius:6px; padding:6px 8px; cursor:pointer; transition: box-shadow .2s, transform .12s; z-index:2; font-size:0.92rem; display:flex; flex-direction:column; gap:4px; }
+  .lesson-item:hover { box-shadow:0 2px 6px rgba(0,0,0,.08); }
+  .lesson-item.in-progress {
+    border-left: 6px solid #22c55e;
+    background: linear-gradient(90deg, #e6f7c9 80%, #f7fee7 100%);
+    box-shadow: 0 4px 16px rgba(34,197,94,0.18);
+    /* keep absolute positioning so top/left computed by JS remain valid */
     position: absolute;
-    top: 10px;
-    right: 15px;
-    background: white;
-    padding: 2px 6px;
-    border-radius: 4px;
-    border: 1px solid #e9ecef;
-    z-index: 5;
-}
+    z-index: 10;
+    animation: pulse-inprogress 1.2s infinite alternate;
+  }
+  @keyframes pulse-inprogress {
+    0% { box-shadow: 0 4px 16px rgba(34,197,94,0.18); }
+    100% { box-shadow: 0 0px 24px 4px rgba(34,197,94,0.28); }
+  }
+  .lesson-title { font-weight:600; font-size:.90rem; margin-bottom:2px; line-height:1.22; }
+  .lesson-time { font-size:.78rem; font-weight:500; color:#6c757d; }
+  .now-line { position:absolute; left:0; right:0; height:2px; background:#dc3545; z-index:10000; pointer-events: none; }
+  /* кружок теперь ровно на границе колонки */
+  .now-line::after { content:""; position:absolute; left:0; top:-4px; width:8px; height:8px; border-radius:50%; background:#dc3545; transform: translateX(-50%); }
 
-@media (min-width: 769px) {
-    .day-date {
-        position: static;
-        background: transparent;
-        padding: 0;
-        border: none;
-    }
-}
+  .live-lesson-card { position:fixed; right:16px; bottom:16px; width:320px; max-width:calc(100vw - 32px); background:#fff; border:1px solid #e7ecf3; border-radius:12px; box-shadow:0 10px 30px rgba(16,24,40,.16); z-index:1050; }
+  .live-lesson-card .ll-header { padding:10px 12px; font-weight:600; border-bottom:1px solid #eef2f7; }
+  .live-lesson-card .ll-body { padding:10px 12px; }
+  .live-lesson-card .ll-title { font-weight:600; margin-bottom:2px; }
+  .live-lesson-card .ll-actions { padding:10px 12px; border-top:1px solid #eef2f7; display:flex; gap:8px; justify-content:flex-end; }
+  .d-none { display:none !important; }
+
+  .details-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    margin-bottom: 12px;
+  }
+  .section-block {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 16px 18px;
+    flex: 1 1 320px;
+    min-width: 220px;
+    margin-bottom: 8px;
+    box-shadow: 0 2px 8px rgba(30,41,59,0.04);
+  }
+  .section-title {
+    font-weight: 600;
+    font-size: 1.08rem;
+    margin-bottom: 8px;
+    color: #334155;
+  }
+  .section-block p {
+    margin-bottom: 6px;
+    font-size: 0.98rem;
+  }
+  .section-block strong {
+    color: #475569;
+  }
+  .section-block .btn {
+    margin-top: 8px;
+  }
+  .modal-body .section-block:last-child {
+    margin-bottom: 0;
+  }
+
+  @media (max-width:768px){ :root{ --gutter-w:52px; } .days-grid{ grid-template-columns:1fr; gap:10px; } .day-header{ position:relative; display:flex; justify-content:space-between; align-items:center; text-align:left; } }
 </style>
-
 <script>
-const langCode = '{{ request.LANGUAGE_CODE|default:"ru" }}';
-function statusBadgeClass(code){
-    switch(code){
-        case 'completed': return 'success';
-        case 'scheduled': return 'primary';
-        case 'rescheduled': return 'warning';
-        case 'cancelled': return 'danger';
-        default: return 'secondary';
-    }
-}
-function showLessonDetails(lessonId) {
-    fetch(`/${langCode}/scheduling/lessons/${lessonId}/details/`)
-        .then(response => response.json())
-        .then(data => {
-            let participantsHtml = '';
-            let materialsHtml = '';
-            let joinButtonHtml = '';
-            let reportButtonHtml = '';
+(function(){
+  const PPM = 1; // px per minute
+  const MIN_LESSON_PX = 16; // минимальная высота карточки
+  const GUTTER_OFFSET = 84; // увеличенный фиксированный отступ для таймлайна (ещё на 1px ниже)
+  const todayStr = '{{ today|date:"Y-m-d" }}';
+  let liveCardLessonId = null;
 
-            // Role-based participant display
-            {% if user.is_student %}
-                participantsHtml = `<p><strong>Преподаватель:</strong> ${data.teacher}</p>`;
-            {% elif user.is_teacher %}
-                participantsHtml = `<p><strong>Ученик:</strong> ${data.student}</p>`;
-            {% else %}
-                participantsHtml = `
-                    <p><strong>Преподаватель:</strong> ${data.teacher}</p>
-                    <p><strong>Ученик:</strong> ${data.student}</p>
-                `;
-            {% endif %}
-            
-            // Materials section
-            if (data.materials || data.teacher_materials) {
-                materialsHtml = '<div class="mt-3"><h6>Материалы</h6>';
-                
-                if (data.materials) {
-                    materialsHtml += `
-                        <div class="mb-2">
-                            <a href="${data.materials.url}" class="btn btn-sm btn-outline-info" download>
-                                <i class="bi bi-download"></i> ${data.materials.name}
-                            </a>
-                            <small class="text-muted ms-2">Общие материалы</small>
-                        </div>
-                    `;
-                }
-                
-                {% if user.is_teacher or user.is_methodist %}
-                if (data.teacher_materials) {
-                    materialsHtml += `
-                        <div class="mb-2">
-                            <a href="${data.teacher_materials.url}" class="btn btn-sm btn-outline-warning" download>
-                                <i class="bi bi-download"></i> ${data.teacher_materials.name}
-                            </a>
-                            <small class="text-muted ms-2">Материалы для преподавателя</small>
-                        </div>
-                    `;
-                }
-                {% endif %}
-                
-                materialsHtml += '</div>';
-            }
-            
-            // Join button
-            if (data.zoom_link) {
-                joinButtonHtml = `
-                    <a id="joinLessonBtnModal" class="btn btn-success disabled" href="#"
-                       data-start="${data.start_iso}" data-end="${data.end_iso}" data-link="${data.zoom_link}">
-                        <i class="bi bi-camera-video"></i> Подключиться к занятию
-                    </a>
-                    <span id="joinLessonInfoModal" class="text-muted ms-2" style="font-size:0.9em;"></span>
-                `;
-            }
-            if (data.user_is_student) {
-                reportButtonHtml = `
-                    <button id="reportLessonBtnModal" class="btn btn-danger ms-2" style="display:none;">Пожаловаться на занятие</button>
-                    <span id="reportLessonInfoModal" class="text-muted ms-2" style="font-size:0.9em;"></span>
-                    <div class="modal fade" id="reportProblemModal" tabindex="-1">
-                        <div class="modal-dialog">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title">Пожаловаться на занятие</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                </div>
-                                <div class="modal-body">
-                                    <form id="reportProblemFormModal">
-                                        <div class="mb-3">
-                                            <label for="problemTypeModal" class="form-label">Тип проблемы</label>
-                                            <select class="form-select" id="problemTypeModal" name="problem_type" required>
-                                                <option value="tech">Техническая проблема</option>
-                                                <option value="no_teacher">Учитель не пришёл</option>
-                                                <option value="other">Другое</option>
-                                            </select>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="problemDescModal" class="form-label">Описание</label>
-                                            <textarea class="form-control" id="problemDescModal" name="description" rows="3" required></textarea>
-                                        </div>
-                                        <input type="hidden" name="lesson_id" value="${data.id}">
-                                        <div class="d-grid">
-                                            <button type="submit" class="btn btn-danger">Отправить жалобу</button>
-                                        </div>
-                                    </form>
-                                    <div id="reportSuccessMsgModal" class="alert alert-success mt-3 d-none">Жалоба отправлена!</div>
-                                    <div id="reportErrorMsgModal" class="alert alert-danger mt-3 d-none"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }
-            document.getElementById('lessonDetailsContent').innerHTML = `
-                <div class="row">
-                    <div class="col-md-6">
-                        <h6>Основная информация</h6>
-                        <p><strong>Название:</strong> ${data.title}</p>
-                        <p><strong>Предмет:</strong> ${data.subject}</p>
-                        <p><strong>Дата:</strong> ${data.date}</p>
-                        <p><strong>Время:</strong> ${data.start_time} - ${data.end_time}</p>
-                        <p><strong>Статус:</strong> <span class="badge bg-${statusBadgeClass(data.status_code || '')}">${data.status}</span></p>
-                    </div>
-                    <div class="col-md-6">
-                        <h6>Участники</h6>
-                        ${participantsHtml}
-                        <div class="d-flex align-items-center mt-3">
-                            ${joinButtonHtml}
-                            ${reportButtonHtml}
-                        </div>
-                    </div>
-                </div>
-                ${data.description ? `<div class=\"mt-3\"><h6>Описание</h6><p>${data.description}</p></div>` : ''}
-                ${materialsHtml}
-            `;
-            new bootstrap.Modal(document.getElementById('lessonDetailsModal')).show();
-            // Динамика кнопки подключения и жалобы
-            (function(){
-                function updateJoinBtnModal(){
-                    var btn = document.getElementById('joinLessonBtnModal');
-                    var info = document.getElementById('joinLessonInfoModal');
-                    var reportBtn = document.getElementById('reportLessonBtnModal');
-                    var reportInfo = document.getElementById('reportLessonInfoModal');
-                    if(!btn) return;
-                    var start = new Date(btn.getAttribute('data-start'));
-                    var end = new Date(btn.getAttribute('data-end'));
-                    var now = new Date();
-                    var windowOpen = new Date(start.getTime()-5*60000);
-                    // Кнопка подключения
-                    if(now >= windowOpen && now <= end){
-                        btn.classList.remove('disabled');
-                        btn.setAttribute('href', btn.getAttribute('data-link'));
-                        btn.title = 'Присоединиться к занятию';
-                        info.textContent = '';
-                    } else {
-                        btn.classList.add('disabled');
-                        btn.removeAttribute('href');
-                        if(now < windowOpen){
-                            btn.title = 'Доступно за 5 минут до начала';
-                            info.textContent = 'Кнопка станет активной за 5 минут до начала.';
-                        } else {
-                            btn.title = 'Занятие завершено';
-                            info.textContent = 'Занятие завершено.';
-                        }
-                    }
-                    // Кнопка жалобы
-                    if(reportBtn){
-                        var reportWindowOpen = new Date(start.getTime()+5*60000);
-                        if(now >= reportWindowOpen && now <= end){
-                            reportBtn.style.display = '';
-                            reportBtn.disabled = false;
-                            reportInfo.textContent = '';
-                        }else{
-                            reportBtn.style.display = 'none';
-                            if(now < reportWindowOpen){
-                                reportInfo.textContent = 'Жалоба доступна спустя 5 минут после начала.';
-                            }else{
-                                reportInfo.textContent = 'Жалоба больше недоступна.';
-                            }
-                        }
-                    }
-                }
-                updateJoinBtnModal();
-                setInterval(updateJoinBtnModal, 30000);
-                // Модалка жалобы
-                var reportBtn = document.getElementById('reportLessonBtnModal');
-                if(reportBtn){
-                    var reportModal = new bootstrap.Modal(document.getElementById('reportProblemModal'));
-                    reportBtn.onclick = function(){ reportModal.show(); };
-                    var form = document.getElementById('reportProblemFormModal');
-                    if(form){
-                        form.onsubmit = function(e){
-                            e.preventDefault();
-                            var fd = new FormData(form);
-                            fetch('/scheduling/report-problem/', {
-                                method: 'POST',
-                                headers: { 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value },
-                                body: fd
-                            })
-                            .then(r => r.json())
-                            .then(data => {
-                                var okBox = document.getElementById('reportSuccessMsgModal');
-                                var errBox = document.getElementById('reportErrorMsgModal');
-                                if(data.success){
-                                    okBox.classList.remove('d-none');
-                                    errBox.classList.add('d-none');
-                                    form.reset();
-                                    setTimeout(()=>{ document.getElementById('reportProblemModal') && bootstrap.Modal.getInstance(document.getElementById('reportProblemModal')).hide(); }, 1200);
-                                } else {
-                                    errBox.textContent = data.error || 'Ошибка отправки';
-                                    errBox.classList.remove('d-none');
-                                }
-                            })
-                            .catch(err => {
-                                var errBox = document.getElementById('reportErrorMsgModal');
-                                errBox.textContent = 'Сетевая ошибка';
-                                errBox.classList.remove('d-none');
-                            });
-                        };
-                    }
-                }
-            })();
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Ошибка при загрузке данных занятия');
-        });
+  function ensureGutter(offset){
+    const inner = document.querySelector('.time-gutter-inner');
+    if(!inner) return;
+    inner.style.height = String(offset + 24*60*PPM + 20) + 'px';
+    inner.innerHTML = '';
+    for (let h=0; h<=24; h++){
+      const top = offset + h*60*PPM;
+      const tick = document.createElement('div');
+      tick.className = 'time-tick' + (h === 24 ? ' last' : '');
+      tick.style.top = top + 'px';
+      const label = document.createElement('div');
+      label.className = h === 24 ? 'label last' : 'label';
+      label.textContent = String(h).padStart(2,'0') + ':00';
+      tick.appendChild(label);
+      inner.appendChild(tick);
+      if (h < 24 && h < 23){
+        const subtick = document.createElement('div');
+        subtick.className = 'time-subtick';
+        subtick.style.top = (offset + h*60*PPM + 30*PPM) + 'px';
+        inner.appendChild(subtick);
+      }
+    }
+  }
+
+  function layoutDayColumns(offset){
+    document.querySelectorAll('.day-lessons').forEach(function(col){
+      col.style.height = String(24*60*PPM) + 'px';
+      const day = col.getAttribute('data-day');
+      const oldLine = col.querySelector('.now-line');
+      if (oldLine) oldLine.remove();
+      const items = Array.from(col.querySelectorAll('.lesson-item'));
+      const placed = [];
+      items.forEach(function(it){
+        const startISO = it.getAttribute('data-start');
+        const endISO = it.getAttribute('data-end');
+        if (!startISO || !endISO) return;
+        const s = new Date(startISO); const e = new Date(endISO);
+        const dayStart = new Date(s.getFullYear(), s.getMonth(), s.getDate(), 0,0,0,0);
+        const top = Math.max(0, Math.round((s - dayStart)/60000) * PPM);
+        const h = Math.max(MIN_LESSON_PX, Math.round((e - s)/60000) * PPM);
+        it.style.top = top + 'px';
+        it.style.height = h + 'px';
+        // use transform to shift horizontally on overlap — preserves absolute top and prevents layout shifts
+        let shift = 0;
+        for (const p of placed){ const pt = p.top, ph = p.h; if (!(top >= pt+ph || (top+h) <= pt)) { shift += 6; } }
+        it.style.left = '6px';
+        // don't shift currently in-progress lesson cards — keep them fixed to their computed position
+        if (it.classList.contains('in-progress')) {
+          it.style.transform = 'none';
+        } else {
+          if (shift) { it.style.transform = `translateX(${shift}px)`; } else { it.style.transform = 'none'; }
+        }
+         placed.push({top: top, h: h});
+        const now = new Date();
+        if (now >= s && now <= e) it.classList.add('in-progress'); else it.classList.remove('in-progress');
+      });
+      // Now line только для сегодняшнего дня
+      if (day === todayStr){
+        const now = new Date();
+        const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0,0,0,0);
+        const y = Math.max(0, Math.min(24*60*PPM, Math.round((now - dayStart)/60000) * PPM));
+        const line = document.createElement('div'); line.className = 'now-line'; line.style.top = y + 'px'; col.appendChild(line);
+      }
+    });
+    // Gutter
+    ensureGutter(offset);
+  }
+
+  async function fetchLessonDetails(id){
+    const lang = '{{ request.LANGUAGE_CODE|default:"ru" }}';
+    try{ const r = await fetch(`/${lang}/scheduling/lessons/${id}/details/`, { headers:{ 'Accept':'application/json' } }); if(!r.ok) return null; return await r.json(); }catch(e){ return null; }
+  }
+
+  function enableJoinButton(btn, infoSpan, startISO, endISO, link){
+    const s = new Date(startISO), e = new Date(endISO), now = new Date();
+    const windowOpen = new Date(s.getTime()-5*60000);
+    if (now >= windowOpen && now <= e){ btn.classList.remove('disabled'); btn.href = link; btn.title = 'Присоединиться к занятию'; if (infoSpan) infoSpan.textContent = ''; }
+    else { btn.classList.add('disabled'); btn.removeAttribute('href'); if (infoSpan) infoSpan.textContent = now < windowOpen ? 'Доступно за 5 минут до начала.' : 'Занятие завершено.'; }
+  }
+
+  async function updateLiveLessonCard(){
+    const card = document.getElementById('liveLessonCard'); if(!card) return;
+    const snoozeUntil = Number(sessionStorage.getItem('llSnoozeUntil')||0); if (Date.now() < snoozeUntil){ card.classList.add('d-none'); return; }
+    const todayCol = document.querySelector(`.day-lessons[data-day="${todayStr}"]`); if(!todayCol){ card.classList.add('d-none'); return; }
+    const current = todayCol.querySelector('.lesson-item.in-progress'); if(!current){ card.classList.add('d-none'); liveCardLessonId = null; return; }
+    const id = current.getAttribute('data-id'); const title = (current.querySelector('.lesson-title')?.textContent || '').trim(); const timeText = (current.querySelector('.lesson-time')?.textContent || '').trim();
+    let details = null; if (liveCardLessonId !== id){ details = await fetchLessonDetails(id); liveCardLessonId = id; card.dataset.startIso = details?.start_iso || ''; card.dataset.endIso = details?.end_iso || ''; card.dataset.link = details?.zoom_link || ''; }
+    else { details = { start_iso: card.dataset.startIso, end_iso: card.dataset.endIso, zoom_link: card.dataset.link }; }
+    document.getElementById('llTitle').textContent = title || 'Занятие'; document.getElementById('llTime').textContent = timeText || ''; const joinBtn = document.getElementById('llJoin'); enableJoinButton(joinBtn, null, details.start_iso, details.end_iso, details.zoom_link || '#');
+    if (details.zoom_link){ card.classList.remove('d-none'); } else { card.classList.add('d-none'); }
+  }
+
+  function wireLiveCard(){ const dismissBtn = document.getElementById('llDismiss'); if (dismissBtn){ dismissBtn.addEventListener('click', function(){ const until = Date.now() + 30*60*1000; sessionStorage.setItem('llSnoozeUntil', String(until)); document.getElementById('liveLessonCard').classList.add('d-none'); }); } }
+
+  function recalc(){
+    layoutDayColumns(GUTTER_OFFSET);
+    updateLiveLessonCard();
+  }
+
+  document.addEventListener('DOMContentLoaded', function(){ wireLiveCard(); recalc(); setInterval(function(){ layoutDayColumns(GUTTER_OFFSET); updateLiveLessonCard(); }, 60000); });
+  window.addEventListener('resize', function(){ recalc(); });
+})();
+
+function showLessonDetails(lessonId){
+  const lang = '{{ request.LANGUAGE_CODE|default:"ru" }}';
+  const modal = new bootstrap.Modal(document.getElementById('lessonDetailsModal'));
+  const content = document.getElementById('lessonDetailsContent');
+  content.innerHTML = '<div class="text-center text-muted py-4"><div class="spinner-border" role="status"><span class="visually-hidden">Загрузка...</span></div></div>';
+  modal.show();
+  fetch(`/${lang}/scheduling/lessons/${lessonId}/details/`, { headers: { 'Accept':'application/json' }})
+    .then(r => r.ok ? r.json() : r.json().then(err => Promise.reject(err)))
+    .then(data => {
+      // helper to escape HTML
+      function escapeHTML(s){ if(!s && s !== 0) return ''; return String(s).replace(/[&<>\"']/g, function(m){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":"&#39;"})[m]; }); }
+
+      const title = escapeHTML(data.title || '');
+      const subject = escapeHTML(data.subject || '');
+      const date = escapeHTML(data.date || '');
+      const start = escapeHTML(data.start_time || '');
+      const end = escapeHTML(data.end_time || '');
+      const teacher = escapeHTML(data.teacher || '');
+      const student = escapeHTML(data.student || '');
+      const description = escapeHTML(data.description || '');
+      const zoomHref = data.zoom_link ? encodeURI(data.zoom_link) : '';
+
+      const html = `
+        <div class="details-grid">
+          <div class="section-block">
+            <div class="section-title">Основная информация</div>
+            <p><strong>Название:</strong> ${title}</p>
+            <p><strong>Предмет:</strong> ${subject}</p>
+            <p><strong>Дата:</strong> ${date}</p>
+            <p><strong>Время:</strong> ${start} - ${end}</p>
+          </div>
+          <div class="section-block">
+            <div class="section-title">Участники</div>
+            ${teacher ? `<p><strong>Преподаватель:</strong> ${teacher}</p>` : ''}
+            ${student ? `<p><strong>Ученик:</strong> ${student}</p>` : ''}
+            <div class="mt-3 d-flex align-items-center gap-2">
+              ${zoomHref ? `<a id="joinLessonBtnModal" class="btn btn-success disabled" href="#" data-start="${escapeHTML(data.start_iso)}" data-end="${escapeHTML(data.end_iso)}" data-link="${zoomHref}">Подключиться</a>` : ''}
+            </div>
+          </div>
+        </div>
+        ${description ? `<div class="section-block"><div class="section-title">Описание</div><p>${description}</p></div>` : ''}
+      `;
+      content.innerHTML = html;
+      (function(){ const btn = document.getElementById('joinLessonBtnModal'); if(!btn) return; function update(){ const s = new Date(btn.getAttribute('data-start')); const e = new Date(btn.getAttribute('data-end')); const now = new Date(); const open = new Date(s.getTime()-5*60000); if (now >= open && now <= e){ btn.classList.remove('disabled'); btn.href = btn.getAttribute('data-link'); btn.title = 'Присоединиться к занятию'; } else { btn.classList.add('disabled'); btn.removeAttribute('href'); btn.title = now < open ? 'Доступно за 5 минут до начала' : 'Занятие завершено'; } } update(); setInterval(update, 30000); })();
+    })
+    .catch(() => { content.innerHTML = '<div class="alert alert-danger">Ошибка при загрузке данных занятия</div>'; });
 }
 </script>
 {% endblock %}

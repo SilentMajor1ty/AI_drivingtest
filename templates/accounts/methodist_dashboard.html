@@ -1,18 +1,36 @@
 {% extends 'base.html' %}
 {% load i18n %}
 
-{% block title %}Methodist Dashboard - {% trans "Школа" %}{% endblock %}
+{% block title %}Панель методиста - {% trans "Школа" %}{% endblock %}
 
 {% block content %}
+<style>
+/* Unified soft cards */
+.dashboard-card { border: 0; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.06); }
+.item-card { border: 0; border-radius: 10px; box-shadow: 0 4px 14px rgba(0,0,0,0.05); }
+/* Section titles with emoji icons */
+.section-title { font-size: 1.25rem; font-weight: 700; display: flex; align-items: center; gap: .5rem; }
+.section-title .section-icon { height: 1.2em; width: auto; }
+.title-icon { height: 1em; width: auto; vertical-align: -0.1em; }
+/* Secondary text lighter/smaller */
+.subtext { font-size: 0.875rem; color: #6c757d; }
+/* KPI number */
+.kpi { font-weight: 800; color: var(--bs-primary); }
+.kpi-icon { color: var(--bs-primary); }
+/* Actions */
+.btn-accent { border-color: var(--bs-primary); color: var(--bs-primary); }
+.btn-accent:hover { background: var(--bs-primary); color: #fff; }
+</style>
+
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-    <h1 class="h2"><i class="bi bi-shield-check"></i> Methodist Dashboard</h1>
+    <h1 class="h2">Панель методиста</h1>
     <div class="btn-toolbar mb-2 mb-md-0">
         <div class="btn-group me-2">
-            <a href="{% url 'accounts:user_create' %}" class="btn btn-sm btn-primary">
-                <i class="bi bi-plus"></i> Add User
+            <a href="{% url 'accounts:user_create' %}" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-plus"></i> Добавить пользователя
             </a>
-            <a href="{% url 'scheduling:lesson_create' %}" class="btn btn-sm btn-success">
-                <i class="bi bi-plus"></i> Schedule Lesson
+            <a href="{% url 'scheduling:lesson_create' %}" class="btn btn-sm btn-primary">
+                <i class="bi bi-plus"></i> Запланировать занятие
             </a>
         </div>
     </div>
@@ -20,15 +38,15 @@
 
 <div class="row mb-4">
     <div class="col-md-4">
-        <div class="card card-stats">
+        <div class="card dashboard-card">
             <div class="card-body">
                 <div class="d-flex">
                     <div class="flex-grow-1">
-                        <h5 class="card-title">Total Users</h5>
-                        <h2 class="text-primary">{{ total_users }}</h2>
+                        <h6 class="subtext mb-1">Преподаватели</h6>
+                        <div class="kpi fs-1">{{ total_teachers }}</div>
                     </div>
                     <div class="align-self-center">
-                        <i class="bi bi-people fs-1 text-primary"></i>
+                        <i class="bi bi-person-badge fs-1 kpi-icon"></i>
                     </div>
                 </div>
             </div>
@@ -36,31 +54,31 @@
     </div>
     
     <div class="col-md-4">
-        <div class="card card-stats">
+        <div class="card dashboard-card">
             <div class="card-body">
                 <div class="d-flex">
                     <div class="flex-grow-1">
-                        <h5 class="card-title">Teachers</h5>
-                        <h2 class="text-success">{{ total_teachers }}</h2>
+                        <h6 class="subtext mb-1">Ученики</h6>
+                        <div class="kpi fs-1">{{ total_students }}</div>
                     </div>
                     <div class="align-self-center">
-                        <i class="bi bi-person-badge fs-1 text-success"></i>
+                        <i class="bi bi-person-circle fs-1 kpi-icon"></i>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    
+
     <div class="col-md-4">
-        <div class="card card-stats">
+        <div class="card dashboard-card">
             <div class="card-body">
                 <div class="d-flex">
                     <div class="flex-grow-1">
-                        <h5 class="card-title">Students</h5>
-                        <h2 class="text-info">{{ total_students }}</h2>
+                        <h6 class="subtext mb-1">Завершённые занятия</h6>
+                        <div class="kpi fs-1">{{ completed_lessons_count }}</div>
                     </div>
                     <div class="align-self-center">
-                        <i class="bi bi-person-circle fs-1 text-info"></i>
+                        <i class="bi bi-check2-circle fs-1 kpi-icon"></i>
                     </div>
                 </div>
             </div>
@@ -70,46 +88,39 @@
 
 <div class="row">
     <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-clock-history"></i> Recent Lessons
-                </h5>
-            </div>
+        <div class="card dashboard-card">
             <div class="card-body">
+                <h5 class="section-title mb-3">
+                    <img src="https://img.icons8.com/fluency/24/calendar.png" alt="Recent Lessons" class="section-icon"/>
+                    Недавние занятия
+                </h5>
                 {% if recent_lessons %}
                     <div class="table-responsive">
-                        <table class="table table-striped">
-                            <thead>
+                        <table class="table table-striped align-middle mb-0">
+                            <thead class="table-light">
                                 <tr>
-                                    <th>Lesson</th>
-                                    <th>Teacher</th>
-                                    <th>Student</th>
-                                    <th>Subject</th>
-                                    <th>Date & Time</th>
-                                    <th>Status</th>
+                                    <th>Предмет</th>
+                                    <th>Занятие</th>
+                                    <th>Преподаватель</th>
+                                    <th>Ученик</th>
+                                    <th>Дата и время</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for lesson in recent_lessons %}
                                 <tr>
-                                    <td>{{ lesson.title }}</td>
-                                    <td>{{ lesson.teacher.full_name }}</td>
-                                    <td>{{ lesson.student.full_name }}</td>
-                                    <td>{{ lesson.subject.name }}</td>
-                                    <td>{{ lesson.start_time|date:"M d, Y H:i" }}</td>
-                                    <td>
-                                        <span class="badge bg-{% if lesson.status == 'completed' %}success{% elif lesson.status == 'scheduled' %}primary{% else %}secondary{% endif %}">
-                                            {{ lesson.get_status_display }}
-                                        </span>
-                                    </td>
+                                    <td class="subtext">{{ lesson.subject.name }}</td>
+                                    <td class="fw-semibold">{{ lesson.title }}</td>
+                                    <td class="subtext">{{ lesson.teacher.full_name }}</td>
+                                    <td class="subtext">{{ lesson.student.full_name }}</td>
+                                    <td class="subtext">{{ lesson.start_time|date:"M d, Y H:i" }}</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
                         </table>
                     </div>
                 {% else %}
-                    <p class="text-muted text-center">No recent lessons.</p>
+                    <p class="text-muted text-center">Нет недавних занятий.</p>
                 {% endif %}
             </div>
         </div>

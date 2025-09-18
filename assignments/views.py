@@ -8,9 +8,47 @@ from django.http import JsonResponse
 from django.utils import timezone
 from django.db import models
 import datetime
+from django.utils.text import get_valid_filename
+import os
+import mimetypes
 
 from .models import Assignment, AssignmentSubmission, Notification
 from .forms import AssignmentForm, AssignmentSubmissionForm
+
+
+# Allowed file extensions and mime types (can be extended or moved to settings)
+ALLOWED_EXTENSIONS = {'.pdf', '.doc', '.docx', '.txt', '.jpg', '.jpeg', '.png', '.zip'}
+ALLOWED_MIME_PREFIXES = {'image/', 'application/', 'text/'}
+MAX_FILE_SIZE = 200 * 1024 * 1024  # 200MB
+
+# Helper to validate uploaded file
+def is_allowed_file(f):
+    # Size
+    try:
+        if f.size > MAX_FILE_SIZE:
+            return False, 'file_too_large'
+    except Exception:
+        return False, 'unknown_size'
+    # Extension
+    name = getattr(f, 'name', '')
+    _, ext = os.path.splitext(name.lower())
+    if ext not in ALLOWED_EXTENSIONS:
+        return False, 'bad_extension'
+    # MIME type check (best-effort)
+    ctype = getattr(f, 'content_type', '')
+    if ctype:
+        for p in ALLOWED_MIME_PREFIXES:
+            if ctype.startswith(p):
+                return True, None
+        return False, 'bad_mime'
+    # Fallback: allow if extension OK
+    return True, None
+
+# Helper to produce safe stored filename
+def safe_filename(original_name):
+    # keep only basename and make valid
+    base = os.path.basename(original_name)
+    return get_valid_filename(base)
 
 
 class AssignmentListView(LoginRequiredMixin, ListView):
@@ -41,10 +79,18 @@ class AssignmentListView(LoginRequiredMixin, ListView):
                 due_date__lt=timezone.now(),
                 status__in=[Assignment.AssignmentStatus.ASSIGNED, Assignment.AssignmentStatus.IN_PROGRESS, Assignment.AssignmentStatus.NEEDS_REVISION]
             )
-        elif status_filter == 'graded':
-            queryset = queryset.filter(status=Assignment.AssignmentStatus.REVIEWED)
-        # 'all' shows everything (no additional filtering)
-        
+        elif status_filter == 'submitted':
+            queryset = queryset.filter(status__in=[Assignment.AssignmentStatus.SUBMITTED, Assignment.AssignmentStatus.REVIEWED])
+        else:
+            # Default ('Предстоящие'): exclude submitted/reviewed/completed and order by nearest deadline first
+            queryset = queryset.exclude(
+                status__in=[
+                    Assignment.AssignmentStatus.SUBMITTED,
+                    Assignment.AssignmentStatus.REVIEWED,
+                    Assignment.AssignmentStatus.COMPLETED,
+                ]
+            ).order_by('due_date')
+
         return queryset
     
     def get_context_data(self, **kwargs):
@@ -63,12 +109,19 @@ class AssignmentListView(LoginRequiredMixin, ListView):
             base_queryset = Assignment.objects.all()
         
         context['filter_counts'] = {
-            'all': base_queryset.count(),
+            # 'Предстоящие' count excludes submitted/reviewed/completed
+            'all': base_queryset.exclude(
+                status__in=[
+                    Assignment.AssignmentStatus.SUBMITTED,
+                    Assignment.AssignmentStatus.REVIEWED,
+                    Assignment.AssignmentStatus.COMPLETED,
+                ]
+            ).count(),
             'overdue': base_queryset.filter(
                 due_date__lt=timezone.now(),
                 status__in=[Assignment.AssignmentStatus.ASSIGNED, Assignment.AssignmentStatus.IN_PROGRESS, Assignment.AssignmentStatus.NEEDS_REVISION]
             ).count(),
-            'graded': base_queryset.filter(status=Assignment.AssignmentStatus.REVIEWED).count(),
+            'submitted': base_queryset.filter(status__in=[Assignment.AssignmentStatus.SUBMITTED, Assignment.AssignmentStatus.REVIEWED]).count(),
         }
         
         return context
@@ -138,22 +191,36 @@ class AssignmentCreateView(LoginRequiredMixin, CreateView):
         if assignment_files:
             from .models import AssignmentSubmission, AssignmentFile
             
-            # Create a default submission for the assignment materials
-            submission = AssignmentSubmission.objects.create(
-                assignment=self.object,
-                comments="Assignment materials",
-                is_final=False  # This is not a student submission
-            )
-            print(f"DEBUG: Создан submission {submission.id}")  # Отладочный вывод
-
-            # Add all uploaded files
+            # Validate files first
+            validated = []
             for file in assignment_files:
-                assignment_file = AssignmentFile.objects.create(
-                    submission=submission,
-                    file=file,
-                    original_name=file.name
+                ok, reason = is_allowed_file(file)
+                if not ok:
+                    # Skip invalid files and log
+                    logger = logging.getLogger('admin_actions')
+                    logger.warning(f"Rejected assignment file upload: {file.name}, reason={reason}")
+                    continue
+                # sanitize filename
+                file.name = safe_filename(file.name)
+                validated.append(file)
+
+            if validated:
+                # Create a default submission for the assignment materials
+                submission = AssignmentSubmission.objects.create(
+                    assignment=self.object,
+                    comments="Assignment materials",
+                    is_final=False  # This is not a student submission
                 )
-                print(f"DEBUG: Создан файл {assignment_file.original_name}")  # Отладочный вывод
+                print(f"DEBUG: Создан submission {submission.id}")  # Отладочный вывод
+
+                # Add all uploaded files
+                for file in validated:
+                    assignment_file = AssignmentFile.objects.create(
+                        submission=submission,
+                        file=file,
+                        original_name=file.name
+                    )
+                    print(f"DEBUG: Создан файл {assignment_file.original_name}")  # Отладочный вывод
 
         # Create notification for student
         assignment = self.object
@@ -186,7 +253,24 @@ def submit_assignment(request, pk):
         if not submission_files and not comments.strip():
             messages.error(request, "Please provide either files or comments for your submission.")
             return redirect('assignments:assignment_detail', pk=pk)
-        
+
+        # Validate files (explicit size check)
+        validated_files = []
+        oversize_files = []
+        for file in submission_files:
+            if hasattr(file, 'size') and file.size > MAX_FILE_SIZE:
+                oversize_files.append(file.name)
+                continue
+            ok, reason = is_allowed_file(file)
+            if not ok:
+                messages.error(request, f"Недопустимый файл: {file.name} ({reason})")
+                return redirect('assignments:assignment_detail', pk=pk)
+            file.name = safe_filename(file.name)
+            validated_files.append(file)
+        if oversize_files:
+            messages.error(request, f"Файл(ы) слишком большие: {', '.join(oversize_files)}. Максимальный размер — 200MB.")
+            return redirect('assignments:assignment_detail', pk=pk)
+
         # Create submission
         submission = AssignmentSubmission.objects.create(
             assignment=assignment,
@@ -194,9 +278,9 @@ def submit_assignment(request, pk):
         )
         
         # Handle multiple files
-        if submission_files:
+        if validated_files:
             from .models import AssignmentFile
-            for file in submission_files:
+            for file in validated_files:
                 AssignmentFile.objects.create(
                     submission=submission,
                     file=file,
@@ -226,6 +310,35 @@ def submit_assignment(request, pk):
         return redirect('assignments:assignment_detail', pk=pk)
     
     return render(request, 'assignments/submit_assignment.html', {'assignment': assignment})
+
+
+@login_required
+def upload_assignment_files(request, submission_id):
+    """Upload additional files to assignment submission"""
+    from .models import AssignmentFile
+
+    submission = get_object_or_404(AssignmentSubmission, pk=submission_id)
+
+    if request.user != submission.assignment.student:
+        return JsonResponse({'success': False, 'error': 'Permission denied'})
+
+    if request.method == 'POST':
+        uploaded_files = request.FILES.getlist('files')
+
+        # Validate file sizes (200MB limit per file)
+        max_size = MAX_FILE_SIZE
+        created = []
+        for file in uploaded_files:
+            ok, reason = is_allowed_file(file)
+            if not ok:
+                return JsonResponse({'success': False, 'error': f'Invalid file: {file.name} ({reason})'})
+            file.name = safe_filename(file.name)
+            af = AssignmentFile.objects.create(submission=submission, file=file, original_name=file.name)
+            created.append(af.id)
+
+        return JsonResponse({'success': True, 'created': created})
+
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
 
 
 class NotificationListView(LoginRequiredMixin, ListView):
@@ -369,60 +482,51 @@ def send_for_revision(request, pk):
 
 
 @login_required
-def upload_assignment_files(request, submission_id):
-    """Upload additional files to assignment submission"""
-    from .models import AssignmentFile
-    
-    submission = get_object_or_404(AssignmentSubmission, pk=submission_id)
-    
-    if request.user != submission.assignment.student:
-        return JsonResponse({'success': False, 'error': 'Permission denied'})
-    
-    if request.method == 'POST':
-        uploaded_files = request.FILES.getlist('files')
-        
-        # Validate file sizes (200MB limit per file)
-        max_size = 200 * 1024 * 1024  # 200MB in bytes
-        for file in uploaded_files:
-            if file.size > max_size:
-                return JsonResponse({
-                    'success': False, 
-                    'error': f'File "{file.name}" is too large. Maximum size is 200MB.'
-                })
-        
-        # Create file records
-        created_files = []
-        for file in uploaded_files:
-            assignment_file = AssignmentFile.objects.create(
-                submission=submission,
-                file=file,
-                original_name=file.name
-            )
-            created_files.append(assignment_file)
-        
-        return JsonResponse({
-            'success': True, 
-            'message': f'{len(uploaded_files)} files uploaded successfully'
-        })
-    
-    return JsonResponse({'success': False, 'error': 'Invalid request method'})
-
-
-@login_required
 def delete_assignment_file(request, file_id):
-    """Delete assignment file"""
+    """Delete an AssignmentFile. Allowed: submission owner (student), lesson teacher, or methodist.
+    If called via AJAX/Fetch, returns JSON; otherwise redirects back to assignment detail.
+    """
     from .models import AssignmentFile
-    
-    file = get_object_or_404(AssignmentFile, pk=file_id)
-    
-    if request.user != file.submission.assignment.student:
-        return JsonResponse({'success': False, 'error': 'Permission denied'})
-    
+
+    af = get_object_or_404(AssignmentFile, pk=file_id)
+    assignment = af.submission.assignment
+    user = request.user
+
+    # Permission checks
+    allowed = False
+    try:
+        if user.is_methodist():
+            allowed = True
+        elif user == assignment.student:
+            allowed = True
+        elif assignment.lesson and hasattr(user, 'is_teacher') and user.is_teacher() and assignment.lesson.teacher_id == user.id:
+            allowed = True
+    except Exception:
+        allowed = False
+
+    if not allowed:
+        if request.method == 'POST' and (request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.META.get('HTTP_ACCEPT','').startswith('application/json')):
+            return JsonResponse({'success': False, 'error': 'Permission denied'}, status=403)
+        messages.error(request, 'Доступ запрещён')
+        return redirect('assignments:assignment_detail', pk=assignment.pk)
+
     if request.method == 'POST':
-        file.delete()
-        return JsonResponse({'success': True})
-    
-    return JsonResponse({'success': False, 'error': 'Invalid request method'})
+        try:
+            # delete file from storage and DB
+            af.file.delete(save=False)
+            af.delete()
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.META.get('HTTP_ACCEPT','').startswith('application/json'):
+                return JsonResponse({'success': True})
+            messages.success(request, 'Файл удалён')
+        except Exception as e:
+            logger.exception('Error deleting assignment file')
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.META.get('HTTP_ACCEPT','').startswith('application/json'):
+                return JsonResponse({'success': False, 'error': str(e)}, status=500)
+            messages.error(request, 'Ошибка при удалении файла')
+        return redirect('assignments:assignment_detail', pk=assignment.pk)
+
+    # For non-POST requests, redirect back
+    return redirect('assignments:assignment_detail', pk=assignment.pk)
 
 
 @login_required
@@ -433,9 +537,42 @@ def methodist_analytics(request):
         return redirect('accounts:dashboard')
     
     from django.db.models import Avg, Count
-    from scheduling.models import Lesson
+    from scheduling.models import Lesson, LessonFeedback
     from accounts.models import User
-    
+    from django.utils import timezone as _tz
+    from datetime import timedelta as _td, date as _date
+
+    # Parse interval and reference date
+    interval = request.GET.get('interval', 'week')  # 'week' | 'month'
+    ref_str = request.GET.get('ref')  # YYYY-MM-DD
+    try:
+        if ref_str:
+            parts = [int(p) for p in ref_str.split('-')]
+            ref_date = _date(parts[0], parts[1], parts[2])
+        else:
+            ref_date = _tz.now().date()
+    except Exception:
+        ref_date = _tz.now().date()
+
+    # Determine period start/end based on interval
+    if interval == 'month':
+        period_start = ref_date.replace(day=1)
+        # first day of next month
+        if period_start.month == 12:
+            next_month_first = _date(period_start.year + 1, 1, 1)
+        else:
+            next_month_first = _date(period_start.year, period_start.month + 1, 1)
+        period_end = next_month_first - _td(days=1)
+    else:
+        interval = 'week'
+        period_start = ref_date - _td(days=ref_date.weekday())  # Monday
+        period_end = period_start + _td(days=6)  # Sunday
+
+    # Navigation refs (previous/next period)
+    prev_ref = (period_start - _td(days=1)).isoformat()
+    next_ref = (period_end + _td(days=1)).isoformat()
+    current_ref = ref_date.isoformat()
+
     # Grade statistics
     graded_assignments = Assignment.objects.filter(grade__isnull=False)
     
@@ -446,18 +583,18 @@ def methodist_analytics(request):
         avg_grade=Avg('grade'),
         assignment_count=Count('id')
     ).order_by('-avg_grade')
-    
+
     # Overall statistics
     total_assignments = Assignment.objects.count()
     completed_assignments = graded_assignments.count()
     avg_grade = graded_assignments.aggregate(avg=Avg('grade'))['avg']
-    
+
     # Lesson statistics
     total_lessons = Lesson.objects.count()
     completed_lessons = Lesson.objects.filter(status=Lesson.LessonStatus.COMPLETED).count()
     cancelled_lessons = Lesson.objects.filter(status=Lesson.LessonStatus.CANCELLED).count()
-    
-    # Average lesson ratings
+
+    # Average lesson ratings (старые поля в Lesson)
     lesson_ratings = Lesson.objects.filter(
         status=Lesson.LessonStatus.COMPLETED,
         teacher_rating__isnull=False,
@@ -466,12 +603,64 @@ def methodist_analytics(request):
         avg_teacher_rating=Avg('teacher_rating'),
         avg_student_rating=Avg('student_rating')
     )
-    
-    # Attendance rate (lessons that were confirmed vs scheduled)
+
+    # Attendance rate (оставлено для совместимости, не выводим)
     scheduled_lessons = Lesson.objects.filter(
         status__in=[Lesson.LessonStatus.SCHEDULED, Lesson.LessonStatus.COMPLETED]
     ).count()
     attendance_rate = (completed_lessons / scheduled_lessons * 100) if scheduled_lessons > 0 else 0
+
+    # --- Period completed lessons per teacher (week or month) ---
+    period_qs = (
+        Lesson.objects
+        .filter(status=Lesson.LessonStatus.COMPLETED, start_time__date__range=[period_start, period_end])
+        .values('teacher')
+        .annotate(cnt=Count('id'))
+        .order_by('-cnt')
+    )
+    teacher_ids = [r['teacher'] for r in period_qs if r.get('teacher')]
+    teacher_map = {}
+    if teacher_ids:
+        for r in User.objects.filter(id__in=teacher_ids).values('id', 'first_name', 'last_name'):
+            teacher_map[r['id']] = f"{r['first_name']} {r['last_name']}".strip()
+    period_teacher_counts = [
+        {
+            'teacher_id': row.get('teacher'),
+            'teacher_name': teacher_map.get(row.get('teacher'), ''),
+            'count': row.get('cnt', 0)
+        }
+        for row in period_qs
+    ]
+
+    # --- Feedback analytics (LessonFeedback) ---
+    overall_total = LessonFeedback.objects.count()
+    recent_feedbacks = (
+        LessonFeedback.objects
+        .select_related('lesson', 'lesson__teacher', 'user')
+        .order_by('-created_at')[:20]
+    )
+    per_teacher = (
+        LessonFeedback.objects.filter(is_teacher=False)
+        .values('lesson__teacher')
+        .annotate(avg=Avg('rating'), cnt=Count('id'))
+        .order_by('-avg')
+    )
+    # Resolve teacher names
+    teacher_names = {}
+    teacher_ids2 = [t['lesson__teacher'] for t in per_teacher if t.get('lesson__teacher')]
+    if teacher_ids2:
+        qs = User.objects.filter(id__in=teacher_ids2).values('id', 'first_name', 'last_name')
+        for r in qs:
+            teacher_names[r['id']] = f"{r['first_name']} {r['last_name']}"
+    per_teacher_list = [
+        {
+            'teacher_id': t.get('lesson__teacher'),
+            'teacher_name': teacher_names.get(t.get('lesson__teacher'), ''),
+            'avg': t.get('avg'),
+            'cnt': t.get('cnt'),
+        }
+        for t in per_teacher
+    ]
     
     context = {
         'student_grades': student_grades[:10],  # Top 10 students
@@ -484,6 +673,43 @@ def methodist_analytics(request):
         'attendance_rate': attendance_rate,
         'avg_teacher_rating': lesson_ratings['avg_teacher_rating'],
         'avg_student_rating': lesson_ratings['avg_student_rating'],
+        # Period per teacher
+        'period_teacher_counts': period_teacher_counts,
+        'period_start': period_start,
+        'period_end': period_end,
+        'interval': interval,
+        'prev_ref': prev_ref,
+        'next_ref': next_ref,
+        'current_ref': current_ref,
+        # Feedback additions
+        'overall_total': overall_total,
+        'recent_feedbacks': recent_feedbacks,
+        'per_teacher': per_teacher_list,
     }
     
     return render(request, 'assignments/methodist_analytics.html', context)
+
+
+@login_required
+def teacher_feedback_list(request, teacher_id):
+    """Список всех отзывов по выбранному преподавателю (методист)."""
+    if not request.user.is_methodist():
+        messages.error(request, "Доступ запрещён")
+        return redirect('accounts:dashboard')
+
+    from accounts.models import User
+    from scheduling.models import LessonFeedback
+
+    teacher = get_object_or_404(User, pk=teacher_id, role=User.UserRole.TEACHER)
+    feedbacks = (
+        LessonFeedback.objects
+        .filter(is_teacher=False, lesson__teacher_id=teacher_id)
+        .select_related('lesson', 'user')
+        .order_by('-created_at')
+    )
+
+    context = {
+        'teacher': teacher,
+        'feedbacks': feedbacks,
+    }
+    return render(request, 'assignments/teacher_feedback_list.html', context)

@@ -1,10 +1,9 @@
-
 {% extends 'base.html' %}
 {% load i18n %}
 {% block title %}{% trans "Жалобы" %} - {% trans "Школа" %}{% endblock %}
 {% block content %}
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-  <h1 class="h2"><i class="bi bi-flag"></i> {% trans "Жалобы" %}</h1>
+  <h1 class="h2">{% trans "Жалобы" %}</h1>
 </div>
 {% if reports %}
 <div class="table-responsive">
@@ -40,4 +39,3 @@
 <div class="alert alert-info">{% trans "Жалоб пока нет" %}</div>
 {% endif %}
 {% endblock %}
-

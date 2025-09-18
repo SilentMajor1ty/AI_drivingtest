@@ -5,18 +5,14 @@
 
 {% block content %}
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-    <h1 class="h2">
-        <i class="bi bi-journal-text"></i> {{ assignment.title }}
-    </h1>
+    <h1 class="h2">{{ assignment.title }}</h1>
     <div class="btn-toolbar mb-2 mb-md-0">
         <div class="btn-group me-2">
-            <a href="{% url 'assignments:assignment_list' %}" class="btn btn-outline-secondary btn-sm">
-                <i class="bi bi-arrow-left"></i> {% trans "Назад к списку" %}
+            <a href="{% url 'assignments:assignment_list' %}" class="btn btn-outline-secondary btn-sm" style="border-radius:8px;font-weight:500;">
+                Назад к списку
             </a>
             {% if user.is_teacher or user.is_methodist %}
-            <a href="{% url 'assignments:assignment_create' %}" class="btn btn-outline-primary btn-sm">
-                <i class="bi bi-plus"></i> {% trans "Новое задание" %}
-            </a>
+            <!-- Кнопка "Новое задание" удалена по запросу -->
             {% endif %}
         </div>
     </div>
@@ -26,100 +22,67 @@
     <div class="col-md-8">
         <!-- Assignment Info -->
         <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-info-circle"></i> {% trans "Информация о задании" %}
-                </h5>
-            </div>
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-6">
                         {% if assignment.lesson %}
-                        <p><strong>{% trans "Занятие" %}:</strong> {{ assignment.lesson.title }}</p>
-                        <p><strong>{% trans "Предмет" %}:</strong> {{ assignment.lesson.subject.name }}</p>
+                        <p><strong>Занятие:</strong> {{ assignment.lesson.title }}</p>
+                        <p><strong>Предмет:</strong> {{ assignment.lesson.subject.name }}</p>
                         {% else %}
-                        <p><strong>{% trans "Тип задания" %}:</strong> {% trans "Общее задание" %}</p>
+                        <p><strong>Тип задания:</strong> Общее задание</p>
                         {% endif %}
                         {% if user.is_student %}
                             {% if assignment.lesson %}
-                            <p><strong>{% trans "Преподаватель" %}:</strong> {{ assignment.lesson.teacher.full_name }}</p>
+                            <p><strong>Преподаватель:</strong> {{ assignment.lesson.teacher.full_name }}</p>
                             {% else %}
-                            <p><strong>{% trans "Создано" %}:</strong> {{ assignment.created_by.full_name }}</p>
+                            <p><strong>Преподаватель:</strong> {{ assignment.created_by.full_name }}</p>
                             {% endif %}
                         {% elif user.is_teacher %}
-                        <p><strong>{% trans "Ученик" %}:</strong> {{ assignment.student.full_name }}</p>
+                        <p><strong>Ученик:</strong> {{ assignment.student.full_name }}</p>
                         {% else %}
                             {% if assignment.lesson %}
-                            <p><strong>{% trans "Преподаватель" %}:</strong> {{ assignment.lesson.teacher.full_name }}</p>
+                            <p><strong>Преподаватель:</strong> {{ assignment.lesson.teacher.full_name }}</p>
                             {% endif %}
-                        <p><strong>{% trans "Ученик" %}:</strong> {{ assignment.student.full_name }}</p>
+                        <p><strong>Ученик:</strong> {{ assignment.student.full_name }}</p>
                         {% if assignment.created_by %}
-                        <p><strong>{% trans "Создано" %}:</strong> {{ assignment.created_by.full_name }}</p>
+                        <p><strong>Создано:</strong> {{ assignment.created_by.full_name }}</p>
                         {% endif %}
                         {% endif %}
                     </div>
                     <div class="col-md-6">
-                        <p><strong>{% trans "Срок сдачи" %}:</strong> 
-                            <span class="{% if assignment.is_overdue %}text-danger{% elif assignment.days_until_due <= 2 %}text-warning{% endif %}">
+                        <p><strong>Срок сдачи:</strong>
+                            <span class="assignment-date {% if assignment.is_overdue %}text-danger{% elif assignment.days_until_due <= 2 %}text-warning{% endif %}">
                                 {{ assignment.due_date|date:"d.m.Y H:i" }}
                             </span>
                         </p>
-                        <p><strong>{% trans "Статус" %}:</strong> 
-                            <span class="badge bg-{% if assignment.status == 'completed' %}success{% elif assignment.status == 'submitted' %}info{% elif assignment.status == 'reviewed' %}primary{% elif assignment.is_overdue %}danger{% else %}secondary{% endif %}">
-                                {{ assignment.get_status_display }}
-                            </span>
-                        </p>
-                        <p><strong>{% trans "Создано" %}:</strong> {{ assignment.created_at|date:"d.m.Y H:i" }}</p>
-                        {% if assignment.grade %}
-                        <p><strong>{% trans "Оценка" %}:</strong> 
-                            <span class="badge bg-success fs-6">{{ assignment.grade }}/10</span>
-                        </p>
-                        {% endif %}
+                        <p><strong>Создано:</strong> {{ assignment.created_at|date:"d.m.Y H:i" }}</p>
                     </div>
                 </div>
-                
                 <div class="mt-3">
-                    <h6>{% trans "Описание задания" %}</h6>
+                    <h6>Описание задания</h6>
                     <div class="bg-light p-3 rounded">
                         {{ assignment.description|linebreaks }}
                     </div>
                 </div>
-                
                 {% if assignment.assignment_file or assignment_files %}
                 <div class="mt-3">
-                    <h6>{% trans "Материалы задания" %}</h6>
-
+                    <h6>Материалы задания</h6>
                     {% if assignment.assignment_file %}
                     <div class="d-flex align-items-center mb-2">
-                        <i class="bi bi-file-earmark me-2"></i>
                         <a href="{{ assignment.assignment_file.url }}" class="btn btn-outline-info btn-sm" download>
-                            <i class="bi bi-download"></i> {% trans "Скачать материалы" %}
+                            Скачать материалы
                         </a>
                     </div>
                     {% endif %}
-
                     {% if assignment_files %}
                         {% for file in assignment_files %}
                         <div class="d-flex align-items-center mb-2">
-                            <i class="bi bi-file-earmark me-2"></i>
                             <a href="{{ file.file.url }}" class="btn btn-outline-info btn-sm me-2" download>
-                                <i class="bi bi-download"></i> {{ file.original_name|truncatechars:30 }}
+                                {{ file.original_name|truncatechars:30 }}
                             </a>
-                            <small class="text-muted">({{ file.file_size|filesizeformat }})</small>
                         </div>
-                        {% empty %}
-                        <small class="text-muted">{% trans "Нет прикрепленных файлов" %}</small>
                         {% endfor %}
                     {% endif %}
-                </div>
-                {% endif %}
-                
-                {% if assignment.teacher_comments %}
-                <div class="mt-3">
-                    <h6>{% trans "Комментарий преподавателя" %}</h6>
-                    <div class="bg-success bg-opacity-10 p-3 rounded border-start border-success border-3">
-                        {{ assignment.teacher_comments|linebreaks }}
-                    </div>
                 </div>
                 {% endif %}
             </div>
@@ -132,53 +95,51 @@
                     <i class="bi bi-upload"></i> {% trans "Сдача работы" %}
                 </h5>
                 {% if user.is_student and assignment.student == user and assignment.status in 'assigned,in_progress,needs_revision' %}
-                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#submitModal">
-                    <i class="bi bi-plus"></i> {% trans "Сдать работу" %}
-                </button>
+                <!-- Кнопка "Сдать работу" убрана по запросу -->
                 {% endif %}
             </div>
             <div class="card-body">
                 {% if submissions %}
                     {% for submission in submissions %}
-                    <div class="submission-item border-bottom pb-3 mb-3">
+                    <div class="submission-item border-bottom pb-3 mb-3" style="background: #f8fafc; border-radius: 12px; box-shadow: 0 2px 8px rgba(16,24,40,.06); padding: 18px 16px;">
                         <div class="d-flex justify-content-between align-items-start">
                             <div class="flex-grow-1">
-                                <h6 class="mb-1">
+                                <h6 class="mb-1" style="font-weight:600; font-size:1.08rem; color:#1a2340;">
                                     {% trans "Попытка" %} {{ submission.version }}
                                     {% if submission.is_final %}
-                                        <span class="badge bg-success">{% trans "Последняя" %}</span>
+                                        <span class="badge bg-success" style="font-size:0.95rem; padding:4px 12px; margin-left:8px;">{% trans "Последняя" %}</span>
                                     {% endif %}
                                 </h6>
-                                <small class="text-muted">
+                                <small class="text-muted" style="font-size:0.97rem;">
                                     {% trans "Загружено" %}: {{ submission.submitted_at|date:"d.m.Y H:i" }}
                                 </small>
                                 {% if submission.comments %}
-                                <p class="mt-2 mb-2">{{ submission.comments }}</p>
+                                <div class="mt-2 mb-2 p-2 bg-light rounded" style="font-size:1.01rem; color:#1a2340;">
+                                    {{ submission.comments }}
+                                </div>
                                 {% endif %}
-                                
                                 <!-- Files for this submission -->
                                 <div class="mt-2">
                                     {% if submission.submission_file %}
-                                    <div class="d-flex align-items-center mb-1">
-                                        <i class="bi bi-file-earmark me-2"></i>
-                                        <a href="{{ submission.submission_file.url }}" class="me-2" download>
+                                    <div class="d-flex align-items-center mb-1 file-card" style="background:#fff; border-radius:8px; border:1px solid #e7ecf3; padding:7px 12px; margin-bottom:6px;">
+                                        <i class="bi bi-file-earmark me-2" style="font-size:1.2rem; color:#1976d2;"></i>
+                                        <a href="{{ submission.submission_file.url }}" class="me-2 file-link" style="font-weight:500; color:#1976d2; text-decoration:underline;" download>
                                             {{ submission.submission_file.name|truncatechars:50 }}
                                         </a>
-                                        <small class="text-muted">({{ submission.file_size|filesizeformat }})</small>
+                                        <small class="text-muted ms-2">({{ submission.file_size|filesizeformat }})</small>
                                     </div>
                                     {% endif %}
                                     
                                     {% for file in submission.files.all %}
-                                    <div class="d-flex align-items-center mb-1">
-                                        <i class="bi bi-file-earmark me-2"></i>
-                                        <a href="{{ file.file.url }}" class="me-2" download>
+                                    <div class="d-flex align-items-center mb-1 file-card" style="background:#fff; border-radius:8px; border:1px solid #e7ecf3; padding:7px 12px; margin-bottom:6px;">
+                                        <i class="bi bi-file-earmark me-2" style="font-size:1.2rem; color:#1976d2;"></i>
+                                        <a href="{{ file.file.url }}" class="me-2 file-link" style="font-weight:500; color:#1976d2; text-decoration:underline;" download>
                                             {{ file.original_name|truncatechars:50 }}
                                         </a>
-                                        <small class="text-muted">({{ file.file_size|filesizeformat }})</small>
+                                        <small class="text-muted ms-2">({{ file.file_size|filesizeformat }})</small>
                                         {% if user.is_student and assignment.student == user and submission.is_final %}
-                                        <button class="btn btn-outline-danger btn-sm ms-2" 
-                                                onclick="deleteFile({{ file.id }})" title="{% trans 'Удалить файл' %}">
-                                            <i class="bi bi-trash"></i>
+                                        <button class="btn btn-outline-danger btn-sm ms-2" style="border-radius:6px; padding:2px 6px;" onclick="deleteFile({{ file.id }})" title="{% trans 'Удалить файл' %}">
+                                            <i class="bi bi-x" style="font-size:0.92rem;"></i>
                                         </button>
                                         {% endif %}
                                     </div>
@@ -192,10 +153,15 @@
                                 <!-- Additional file upload for current submission -->
                                 {% if user.is_student and assignment.student == user and submission.is_final and assignment.status != 'completed' %}
                                 <div class="mt-2">
-                                    <button class="btn btn-outline-primary btn-sm" 
-                                            onclick="showFileUpload({{ submission.id }})">
-                                        <i class="bi bi-plus"></i> {% trans "Добавить файлы" %}
+                                    <button class="btn btn-outline-primary btn-sm" style="border-radius:7px; font-weight:500; font-size:0.93rem; padding:2px 8px;" onclick="showFileUpload({{ submission.id }})">
+                                        <span style="font-size:0.97rem; font-weight:600;">+ Добавить файлы</span>
                                     </button>
+                                </div>
+                                {% endif %}
+                                {% if submission.grade %}
+                                <div class="mt-2">
+                                    <!-- Оценка без цветной подсветки -->
+                                    <div style="font-size:0.92rem; font-weight:600; color:#1a2340;">Оценка: {{ submission.grade }}/10</div>
                                 </div>
                                 {% endif %}
                             </div>
@@ -208,7 +174,7 @@
                         <p class="mt-2">{% trans "Работа еще не сдана" %}</p>
                         {% if user.is_student and assignment.student == user %}
                         <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#submitModal">
-                            <i class="bi bi-upload"></i> {% trans "Сдать работу" %}
+                            {% trans "Сдать работу" %}
                         </button>
                         {% endif %}
                     </div>
@@ -218,13 +184,8 @@
     </div>
     
     <div class="col-md-4">
-        <!-- Assignment Status Card -->
+        <!-- Restored 'Прогресс' card without header -->
         <div class="card mb-3">
-            <div class="card-header">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-speedometer2"></i> {% trans "Прогресс" %}
-                </h5>
-            </div>
             <div class="card-body">
                 {% if assignment.is_overdue %}
                     <div class="alert alert-danger">
@@ -237,18 +198,18 @@
                         {% trans "Срок сдачи скоро истечет!" %}
                     </div>
                 {% endif %}
-                
+
                 <div class="progress mb-3">
-                    <div class="progress-bar 
+                    <div class="progress-bar
                         {% if assignment.status == 'completed' %}bg-success
                         {% elif assignment.status in 'submitted,reviewed' %}bg-info
                         {% elif assignment.is_overdue %}bg-danger
-                        {% else %}bg-secondary{% endif %}" 
-                        role="progressbar" 
-                        style="width: {% if assignment.status == 'completed' %}100{% elif assignment.status in 'submitted,reviewed' %}75{% elif assignment.status == 'in_progress' %}50{% else %}25{% endif %}%">
+                        {% else %}bg-secondary{% endif %}"
+                        role="progressbar"
+                        style="width: {% if assignment.status == 'completed' or assignment.status == 'reviewed' %}100{% elif assignment.status == 'submitted' %}75{% elif assignment.status == 'in_progress' %}50{% elif assignment.status == 'assigned' %}0{% else %}25{% endif %}%">
                     </div>
                 </div>
-                
+
                 <ul class="list-unstyled">
                     <li class="{% if assignment.status != 'assigned' %}text-success{% endif %}">
                         <i class="bi bi-{% if assignment.status != 'assigned' %}check-circle-fill{% else %}circle{% endif %}"></i>
@@ -262,35 +223,33 @@
                         <i class="bi bi-{% if assignment.status in 'reviewed,completed' %}check-circle-fill{% else %}circle{% endif %}"></i>
                         {% trans "Работа проверена" %}
                     </li>
-                    <li class="{% if assignment.status == 'completed' %}text-success{% endif %}">
-                        <i class="bi bi-{% if assignment.status == 'completed' %}check-circle-fill{% else %}circle{% endif %}"></i>
-                        {% trans "Задание завершено" %}
-                    </li>
                 </ul>
+                {% if assignment.grade %}
+                <div class="mt-3">
+                    <strong>Оценка:</strong>
+                    <span style="font-size:1rem; font-weight:600; color:#1a2340;">{{ assignment.grade }}/10</span>
+                </div>
+                {% endif %}
             </div>
         </div>
-        
-        <!-- Teacher Actions -->
-        {% if assignment.status in 'submitted,reviewed' %}
+
+        <!-- Teacher Actions without header -->
+        {% if assignment.status == 'submitted' %}
             {% if user.is_teacher or user.is_methodist %}
                 {% if not assignment.lesson or assignment.lesson.teacher == user or user.is_methodist %}
         <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-clipboard-check"></i> {% trans "Действия преподавателя" %}
-                </h5>
-            </div>
             <div class="card-body">
                 <button class="btn btn-success w-100 mb-2" data-bs-toggle="modal" data-bs-target="#gradeModal">
-                    <i class="bi bi-award"></i> {% trans "Оценить работу" %}
+                    {% trans "Оценить работу" %}
                 </button>
                 <button class="btn btn-warning w-100 mb-2" data-bs-toggle="modal" data-bs-target="#revisionModal">
-                    <i class="bi bi-arrow-clockwise"></i> {% trans "Отправить на доработку" %}
+                    {% trans "Отправить на доработку" %}
                 </button>
             </div>
         </div>
                 {% endif %}
             {% endif %}
+        </div>
         {% endif %}
     </div>
 </div>
@@ -303,7 +262,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">{% trans "Оценить работу" %}</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{% trans 'Закрыть' %}"></button>
             </div>
             <form action="{% url 'assignments:grade_assignment' assignment.pk %}" method="post">
                 <div class="modal-body">
@@ -347,7 +306,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">{% trans "Отправить на доработку" %}</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{% trans 'Закрыть' %}"></button>
             </div>
             <form method="post" action="{% url 'assignments:send_for_revision' assignment.pk %}">
                 <div class="modal-body">
@@ -384,32 +343,27 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">{% trans "Сдать работу" %}</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{% trans 'Закрыть' %}"></button>
             </div>
             <form action="{% url 'assignments:submit_assignment' assignment.pk %}" method="post" enctype="multipart/form-data">
                 <div class="modal-body">
                     {% csrf_token %}
                     <div class="mb-3">
                         <label for="modal_submission_files" class="form-label">{% trans "Файлы работы" %}</label>
-                        <input type="file" class="form-control" name="submission_files" id="modal_submission_files" multiple
-                               accept=".pdf,.doc,.docx,.txt,.jpg,.png,.zip">
-                        <div class="form-text">{% trans "Можно выбрать несколько файлов. Разрешены: PDF, DOC, DOCX, TXT, JPG, PNG, ZIP" %}</div>
+                        <input type="file" class="form-control" name="submission_files" id="modal_submission_files" multiple accept=".pdf,.doc,.docx,.txt,.jpg,.png,.zip">
+                        <!-- <div class="form-text">{% trans "Можно выбрать несколько файлов. Разрешены: PDF, DOC, DOCX, TXT, JPG, PNG, ZIP" %}</div> -->
                         <div id="modal-submission-files-list" class="mt-2"></div>
                     </div>
                     <div class="mb-3">
                         <label for="modal_comments" class="form-label">{% trans "Комментарий (необязательно)" %}</label>
-                        <textarea class="form-control" name="comments" id="modal_comments" rows="4" 
-                                  placeholder="{% trans 'Добавьте комментарий к вашей работе' %}"></textarea>
+                        <textarea class="form-control" name="comments" id="modal_comments" rows="4" placeholder="{% trans 'Добавьте комментарий к вашей работе' %}"></textarea>
                     </div>
-                    <div class="alert alert-info">
-                        <i class="bi bi-info-circle me-2"></i>
-                        {% trans "Вы можете загрузить несколько файлов, написать комментарий или сделать и то, и другое. После отправки вы сможете добавить дополнительные файлы к этой работе." %}
-                    </div>
+                    <!-- Информационный alert убран -->
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{% trans "Отмена" %}</button>
                     <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-upload"></i> {% trans "Сдать работу" %}
+                        {% trans "Сдать работу" %}
                     </button>
                 </div>
             </form>
@@ -424,7 +378,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">{% trans "Добавить файлы" %}</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{% trans 'Закрыть' %}"></button>
             </div>
             <div class="modal-body">
                 <input type="file" class="form-control" id="additional_files" multiple
@@ -538,6 +492,64 @@ function deleteFile(fileId) {
 </script>
 
 <style>
-.submission-item:last-child { border-bottom: none !important; margin-bottom: 0 !important; padding-bottom: 0 !important; }
+  .card {
+    border-radius: 16px;
+    box-shadow: 0 4px 18px rgba(16,24,40,.10);
+    border: 1px solid #e7ecf3;
+  }
+  .card-body {
+    padding: 2rem 1.5rem;
+  }
+  .h2 {
+    font-weight: 700;
+    color: #1a2340;
+  }
+  .badge {
+    font-size: 0.95rem;
+    border-radius: 8px;
+    padding: 4px 12px;
+    font-weight: 500;
+  }
+  .assignment-status {
+    font-size: 1rem;
+    font-weight: 500;
+    padding: 2px 12px;
+    border-radius: 8px;
+    display: inline-block;
+    margin-bottom: 2px;
+  }
+  .assignment-status.overdue {
+    background: #f8d7da;
+    color: #842029;
+  }
+  .assignment-status.submitted {
+    background: #d1e7dd;
+    color: #0f5132;
+  }
+  .assignment-status.active {
+    font-size: 0.8rem !important;
+    padding: 1px 8px !important;
+  }
+  .assignment-date {
+    font-size: 1rem;
+    color: #6c757d;
+    margin-bottom: 2px;
+  }
+  .bg-light.p-3.rounded {
+    background: #f8fafc !important;
+    border-radius: 12px !important;
+    border: 1px solid #e7ecf3;
+    font-size: 1.05rem;
+    color: #1a2340;
+  }
+  .mt-3 h6 {
+    font-weight: 600;
+    color: #1a2340;
+    margin-bottom: 0.5rem;
+  }
+  .d-flex.align-items-center.mb-2 a.btn {
+    border-radius: 8px;
+    font-weight: 500;
+  }
 </style>
 {% endblock %}

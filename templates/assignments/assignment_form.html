@@ -10,9 +10,57 @@
 {% endblock %}
 
 {% block content %}
+<style>
+  .card {
+    border-radius: 16px;
+    box-shadow: 0 4px 18px rgba(16,24,40,.10);
+    border: 1px solid #e7ecf3;
+  }
+  .card-header {
+    background: linear-gradient(180deg, #f8fafc 0%, #eef3f9 100%);
+    border-bottom: 1px solid #e9edf5;
+    border-radius: 16px 16px 0 0;
+    padding: 1rem 1.5rem;
+  }
+  .card-title {
+    font-weight: 700;
+    font-size: 1.2rem;
+    color: #1a2340;
+  }
+  .form-label {
+    font-weight: 500;
+    color: #1a2340;
+  }
+  .form-control, .form-select {
+    border-radius: 8px;
+    border: 1px solid #e7ecf3;
+    font-size: 1.05rem;
+  }
+  .form-control:focus, .form-select:focus {
+    border-color: #9bb7ff;
+    box-shadow: 0 0 0 .2rem rgba(13,110,253,.12);
+  }
+  .btn {
+    border-radius: 8px;
+    font-weight: 500;
+  }
+  .selected-file-item {
+    background: #f8fafc;
+    border: 1px solid #e7ecf3;
+    border-radius: 8px;
+    padding: 6px 12px;
+    margin-bottom: 6px;
+    font-size: 0.98rem;
+    color: #1a2340;
+  }
+  .form-text {
+    color: #6c757d;
+    font-size: 0.95rem;
+  }
+</style>
+
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
     <h1 class="h2">
-        <i class="bi bi-journal-plus"></i>
         {% if object %}
             {% trans "Редактировать задание" %}
         {% else %}
@@ -33,7 +81,7 @@
         <div class="card">
             <div class="card-header">
                 <h5 class="card-title mb-0">
-                    <i class="bi bi-info-circle"></i> {% trans "Информация о задании" %}
+                    {% trans "Информация о задании" %}
                 </h5>
             </div>
             <div class="card-body">
@@ -57,7 +105,7 @@
                         <div class="col-md-12">
                             <div class="mb-3">
                                 <label for="{{ form.title.id_for_label }}" class="form-label">
-                                    <i class="bi bi-card-text"></i> {% trans "Название задания" %} *
+                                    {% trans "Название задания" %} *
                                 </label>
                                 {{ form.title }}
                                 {% if form.title.help_text %}
@@ -71,7 +119,7 @@
                         <div class="col-md-12">
                             <div class="mb-3">
                                 <label for="{{ form.student.id_for_label }}" class="form-label">
-                                    <i class="bi bi-person"></i> {% trans "Ученик" %} *
+                                    {% trans "Ученик" %} *
                                 </label>
                                 {{ form.student }}
                                 {% if form.student.help_text %}
@@ -83,7 +131,7 @@
                     
                     <div class="mb-3">
                         <label for="{{ form.description.id_for_label }}" class="form-label">
-                            <i class="bi bi-text-paragraph"></i> {% trans "Описание задания" %}
+                            {% trans "Описание задания" %}
                         </label>
                         {{ form.description }}
                         {% if form.description.help_text %}
@@ -95,7 +143,7 @@
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="{{ form.due_date_days.id_for_label }}" class="form-label">
-                                    <i class="bi bi-calendar-x"></i> {% trans "Срок выполнения" %} *
+                                    {% trans "Срок выполнения" %} *
                                 </label>
                                 {{ form.due_date_days }}
                                 {% if form.due_date_days.help_text %}
@@ -106,7 +154,7 @@
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="assignment_files" class="form-label">
-                                    <i class="bi bi-paperclip"></i> {% trans "Материалы задания" %}
+                                    {% trans "Материалы задания" %}
                                 </label>
                                 <input type="file" class="form-control" id="assignment_files" name="assignment_files" multiple 
                                        accept=".pdf,.doc,.docx,.txt,.jpg,.png,.zip">
@@ -119,11 +167,10 @@
                     <div class="d-flex justify-content-between">
                         <div>
                             <button type="submit" class="btn btn-success">
-                                <i class="bi bi-check-lg"></i>
-                                {% if object %}{% trans "Обновить задание" %}{% else %}{% trans "Создать задание" %}{% endif %}
+                                {% trans "Сохранить" %}
                             </button>
-                            <a href="{% url 'assignments:assignment_list' %}" class="btn btn-secondary ms-2">
-                                <i class="bi bi-x-lg"></i> {% trans "Отмена" %}
+                            <a href="{% url 'assignments:assignment_list' %}" class="btn btn-secondary">
+                                {% trans "Отмена" %}
                             </a>
                         </div>
                         {% if object %}

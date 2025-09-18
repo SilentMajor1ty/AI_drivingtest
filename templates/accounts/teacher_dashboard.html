@@ -1,45 +1,53 @@
 {% extends 'base.html' %}
 {% load i18n %}
 
-{% block title %}Teacher Dashboard - {% trans "Школа" %}{% endblock %}
+{% block title %}Панель преподавателя - {% trans "Школа" %}{% endblock %}
 
 {% block content %}
+<style>
+/* Unified soft cards */
+.dashboard-card { border: 0; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.06); }
+.item-card { border: 0; border-radius: 10px; box-shadow: 0 4px 14px rgba(0,0,0,0.05); }
+/* Section titles with icons8 */
+.section-title { font-size: 1.25rem; font-weight: 700; display: flex; align-items: center; gap: .5rem; }
+.section-title .icon-accent { width: 18px; height: 18px; }
+/* Secondary text lighter/smaller */
+.subtext { font-size: 0.875rem; color: #6c757d; }
+.icon { height: 1em; width: auto; vertical-align: -0.15em; }
+.title-icon { height: 1em; width: auto; vertical-align: -0.12em; }
+</style>
+
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-    <h1 class="h2"><i class="bi bi-person-badge"></i> Teacher Dashboard</h1>
+    <h1 class="h2">Панель преподавателя</h1>
     <div class="btn-toolbar mb-2 mb-md-0">
-        <small class="text-muted">Welcome back, {{ user.full_name }}</small>
+        <small class="text-muted">С возвращением, {{ user.full_name }}</small>
     </div>
 </div>
 
 <div class="row">
     <div class="col-md-6">
-        <div class="card">
-            <div class="card-header bg-primary text-white">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-calendar-day"></i> Today's Lessons
-                </h5>
-            </div>
+        <div class="card dashboard-card">
             <div class="card-body">
+                <h5 class="section-title mb-3"><img class="icon-accent" src="https://img.icons8.com/fluency/48/open-book.png" alt=""/> Занятия сегодня</h5>
                 {% if today_lessons %}
                     {% for lesson in today_lessons %}
-                        <div class="lesson-card card mb-2">
+                        <div class="item-card card mb-2">
                             <div class="card-body py-2">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
-                                        <h6 class="mb-1">{{ lesson.title }}</h6>
-                                        <small class="text-muted">
-                                            <i class="bi bi-person"></i> {{ lesson.student.full_name }} |
-                                            <i class="bi bi-book"></i> {{ lesson.subject.name }}
-                                        </small>
+                                        <h6 class="mb-1 fw-semibold">{{ lesson.title }}</h6>
+                                        <div class="subtext">
+                                            <img src="https://img.icons8.com/fluency/16/user.png" alt="" class="icon me-1"/> {{ lesson.student.full_name }} |
+                                            <img src="https://img.icons8.com/fluency/16/book.png" alt="" class="icon me-1"/> {{ lesson.subject.name }}
+                                        </div>
                                     </div>
                                     <div class="text-end">
                                         <small class="fw-bold d-block">
                                             {{ lesson.start_time|time:"H:i" }} - {{ lesson.end_time|time:"H:i" }}
                                         </small>
                                         {% if lesson.zoom_link %}
-                                            <a href="{{ lesson.zoom_link }}" target="_blank" 
-                                               class="btn btn-sm btn-success mt-1">
-                                                <i class="bi bi-camera-video"></i> Присоединиться
+                                            <a href="{{ lesson.zoom_link }}" target="_blank" class="btn btn-sm btn-primary mt-1">
+                                                <img src="https://img.icons8.com/fluency/20/video-call.png" alt="" class="icon me-1"/> Присоединиться
                                             </a>
                                         {% endif %}
                                     </div>
@@ -48,34 +56,30 @@
                         </div>
                     {% endfor %}
                 {% else %}
-                    <p class="text-muted text-center">No lessons scheduled for today.</p>
+                    <p class="text-muted text-center">На сегодня нет занятий.</p>
                 {% endif %}
             </div>
         </div>
     </div>
     
     <div class="col-md-6">
-        <div class="card">
-            <div class="card-header bg-info text-white">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-journal-check"></i> Recent Submissions
-                </h5>
-            </div>
+        <div class="card dashboard-card">
             <div class="card-body">
+                <h5 class="section-title mb-3"><img class="icon-accent" src="https://img.icons8.com/fluency/48/todo-list.png" alt=""/> Последние отправления работ</h5>
                 {% if recent_submissions %}
                     {% for assignment in recent_submissions %}
-                        <div class="card mb-2">
+                        <div class="item-card card mb-2">
                             <div class="card-body py-2">
-                                <div class="d-flex justify-content-between">
+                                <div class="d-flex justify-content-between align-items-center">
                                     <div>
-                                        <h6 class="mb-1">{{ assignment.title }}</h6>
-                                        <small class="text-muted">
-                                            <i class="bi bi-person"></i> {{ assignment.student.full_name }}
-                                        </small>
+                                        <h6 class="mb-1 fw-semibold">{{ assignment.title }}</h6>
+                                        <div class="subtext">
+                                            <img src="https://img.icons8.com/fluency/16/user.png" alt="" class="icon me-1"/> {{ assignment.student.full_name }}
+                                        </div>
                                     </div>
                                     <div class="text-end">
                                         <small>
-                                            <span class="badge bg-success">SUBMITTED</span>
+                                            <span class="badge bg-success">Сдано</span>
                                         </small>
                                     </div>
                                 </div>
@@ -83,48 +87,8 @@
                         </div>
                     {% endfor %}
                 {% else %}
-                    <p class="text-muted text-center">No recent submissions.</p>
+                    <p class="text-muted text-center">Нет недавних отправлений работ.</p>
                 {% endif %}
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row mt-4">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-lightning"></i> Quick Actions
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-3">
-                        <a href="{% url 'scheduling:calendar' %}" class="btn btn-outline-primary btn-lg w-100 mb-2">
-                            <i class="bi bi-calendar3"></i><br>
-                            View Calendar
-                        </a>
-                    </div>
-                    <div class="col-md-3">
-                        <a href="{% url 'scheduling:teacher_lesson_management' %}" class="btn btn-outline-info btn-lg w-100 mb-2">
-                            <i class="bi bi-calendar-check"></i><br>
-                            Manage Lessons
-                        </a>
-                    </div>
-                    <div class="col-md-3">
-                        <a href="{% url 'assignments:assignment_create' %}" class="btn btn-outline-warning btn-lg w-100 mb-2">
-                            <i class="bi bi-journal-plus"></i><br>
-                            Create Assignment
-                        </a>
-                    </div>
-                    <div class="col-md-3">
-                        <a href="{% url 'accounts:profile' %}" class="btn btn-outline-secondary btn-lg w-100 mb-2">
-                            <i class="bi bi-person"></i><br>
-                            My Profile
-                        </a>
-                    </div>
-                </div>
             </div>
         </div>
     </div>

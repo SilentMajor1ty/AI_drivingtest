@@ -1,0 +1,15 @@
+Django>=4.2,<5.0
+Pillow>=10.0,<11.0
+gunicorn>=21.2,<22.0
+# Если используете PostgreSQL:
+psycopg2-binary>=2.9,<3.0
+# Если используете Django REST Framework:
+djangorestframework>=3.14,<4.0
+# Если используете .env-файлы:
+python-dotenv>=1.0,<2.0
+# Если используете красивые формы:
+django-crispy-forms>=2.0,<3.0
+# Если используете фильтрацию:
+django-filter>=23.0,<24.0
+# Если используете внешние HTTP-запросы:
+requests>=2.31,<3.0
