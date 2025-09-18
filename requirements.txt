@@ -13,3 +13,4 @@ django-crispy-forms>=2.0,<3.0
 django-filter>=23.0,<24.0
 # Если используете внешние HTTP-запросы:
 requests>=2.31,<3.0
+whitenoise>=6.0,<7.0
