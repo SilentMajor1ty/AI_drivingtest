@@ -810,6 +810,18 @@ def reschedule_lesson(request, lesson_id):
             else:
                 raise ValueError('Не передана новая дата/время начала')
 
+            # Длительность сохраняем, если новый конец не передан
+            if end_iso:
+                naive_end = datetime.fromisoformat(end_iso)
+                try:
+                    local_end = naive_end.replace(tzinfo=ZoneInfo(user_timezone))
+                except Exception:
+                    local_end = timezone.make_aware(naive_end)
+                new_end = local_end.astimezone(ZoneInfo('UTC'))
+            else:
+                duration = lesson.end_time - lesson.start_time
+                new_end = new_start_utc + duration
+
             # Проверка: нельзя переносить на прошедшее время
             current_time_utc = timezone.now().astimezone(ZoneInfo('UTC'))
             is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
@@ -832,18 +844,6 @@ def reschedule_lesson(request, lesson_id):
                     return JsonResponse({'success': False, 'error': conflict_error}, status=400)
                 messages.error(request, conflict_error)
                 return redirect('scheduling:lesson_detail', pk=lesson_id)
-
-            # Длительность сохраняем, если новый конец не передан
-            if end_iso:
-                naive_end = datetime.fromisoformat(end_iso)
-                try:
-                    local_end = naive_end.replace(tzinfo=ZoneInfo(user_timezone))
-                except Exception:
-                    local_end = timezone.make_aware(naive_end)
-                new_end = local_end.astimezone(ZoneInfo('UTC'))
-            else:
-                duration = lesson.end_time - lesson.start_time
-                new_end = new_start_utc + duration
 
             # Сохраняем оригинальные времена только один раз
             if not lesson.original_start_time:
