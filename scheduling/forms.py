@@ -118,35 +118,9 @@ class LessonForm(forms.ModelForm):
             
             # Check for overlapping lessons
             if teacher:
-                # Check lessons ending before this one
-                previous_lessons = Lesson.objects.filter(
-                    teacher=teacher,
-                    end_time__lte=start_datetime_utc,
-                    status__in=[Lesson.LessonStatus.SCHEDULED, Lesson.LessonStatus.COMPLETED]
-                ).exclude(pk=self.instance.pk if self.instance else None).order_by('-end_time')
-                
-                if previous_lessons.exists():
-                    last_lesson_end = previous_lessons.first().end_time
-                    if start_datetime_utc - last_lesson_end < timedelta(minutes=15):
-                        raise forms.ValidationError(
-                            f"Требуется 15-минутный перерыв между занятиями преподавателя. "
-                            f"Предыдущее занятие заканчивается в {last_lesson_end.strftime('%H:%M')}"
-                        )
-                
-                # Check lessons starting after this one
-                next_lessons = Lesson.objects.filter(
-                    teacher=teacher,
-                    start_time__gte=end_datetime,
-                    status__in=[Lesson.LessonStatus.SCHEDULED, Lesson.LessonStatus.COMPLETED]
-                ).exclude(pk=self.instance.pk if self.instance else None).order_by('start_time')
-                
-                if next_lessons.exists():
-                    next_lesson_start = next_lessons.first().start_time
-                    if next_lesson_start - end_datetime < timedelta(minutes=15):
-                        raise forms.ValidationError(
-                            f"Требуется 15-минутный перерыв между занятиями преподавателя. "
-                            f"Следующее занятие начинается в {next_lesson_start.strftime('%H:%M')}"
-                        )
+                conflict_error = self.check_lesson_conflicts(teacher, start_datetime_utc, end_datetime)
+                if conflict_error:
+                    raise forms.ValidationError(conflict_error)
 
         if not zoom_link:
             raise forms.ValidationError('Ссылка на занятие обязательна.')
@@ -173,3 +147,53 @@ class LessonForm(forms.ModelForm):
             lesson.save()
 
         return lesson
+
+    def check_lesson_conflicts(teacher, start_datetime_utc, end_datetime_utc, exclude_lesson_id=None):
+        """
+        Проверяет пересечения занятий и 15-минутный перерыв для преподавателя.
+        Возвращает строку ошибки, если есть конфликт, иначе None.
+        """
+        # Предыдущее занятие должно заканчиваться минимум за 15 минут до нового
+        previous_lessons = Lesson.objects.filter(
+            teacher=teacher,
+            end_time__lte=start_datetime_utc,
+            status__in=[Lesson.LessonStatus.SCHEDULED, Lesson.LessonStatus.COMPLETED]
+        )
+        if exclude_lesson_id:
+            previous_lessons = previous_lessons.exclude(pk=exclude_lesson_id)
+        previous_lessons = previous_lessons.order_by('-end_time')
+        if previous_lessons.exists():
+            last_lesson_end = previous_lessons.first().end_time
+            if start_datetime_utc - last_lesson_end < timedelta(minutes=15):
+                return (
+                    f"Требуется 15-минутный перерыв между занятиями преподавателя. "
+                    f"Предыдущее занятие заканчивается в {last_lesson_end.strftime('%H:%M')}"
+                )
+        # Следующее занятие должно начинаться минимум через 15 минут после нового
+        next_lessons = Lesson.objects.filter(
+            teacher=teacher,
+            start_time__gte=end_datetime_utc,
+            status__in=[Lesson.LessonStatus.SCHEDULED, Lesson.LessonStatus.COMPLETED]
+        )
+        if exclude_lesson_id:
+            next_lessons = next_lessons.exclude(pk=exclude_lesson_id)
+        next_lessons = next_lessons.order_by('start_time')
+        if next_lessons.exists():
+            next_lesson_start = next_lessons.first().start_time
+            if next_lesson_start - end_datetime_utc < timedelta(minutes=15):
+                return (
+                    f"Требуется 15-минутный перерыв между занятиями преподавателя. "
+                    f"Следующее занятие начинается в {next_lesson_start.strftime('%H:%M')}"
+                )
+        # Проверка на пересечение с другими занятиями
+        overlap_lessons = Lesson.objects.filter(
+            teacher=teacher,
+            start_time__lt=end_datetime_utc,
+            end_time__gt=start_datetime_utc,
+            status__in=[Lesson.LessonStatus.SCHEDULED, Lesson.LessonStatus.COMPLETED]
+        )
+        if exclude_lesson_id:
+            overlap_lessons = overlap_lessons.exclude(pk=exclude_lesson_id)
+        if overlap_lessons.exists():
+            return "У преподавателя уже есть занятие, пересекающееся с этим временем."
+        return None
