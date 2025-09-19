@@ -821,6 +821,13 @@ def reschedule_lesson(request, lesson_id):
             else:
                 duration = lesson.end_time - lesson.start_time
                 new_end = new_start_utc + duration
+            # Проверка: конец должен быть после начала
+            if new_end <= local_start:
+                error_msg = "Время окончания занятия должно быть позже времени начала."
+                if is_ajax:
+                    return JsonResponse({'success': False, 'error': error_msg}, status=400)
+                messages.error(request, error_msg)
+                return redirect('scheduling:lesson_detail', pk=lesson_id)
 
             # Проверка: нельзя переносить на прошедшее время
             current_time_utc = timezone.now().astimezone(ZoneInfo('UTC'))
