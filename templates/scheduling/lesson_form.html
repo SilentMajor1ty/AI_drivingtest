@@ -18,12 +18,12 @@
 
   <!-- Row 1: Title + Subject -->
   <div class="row g-3 mb-2">
-    <div class="col-12 col-md-6">
+    <div class="col-6">
       <label class="form-label" for="{{ form.title.id_for_label }}">{% trans "Название занятия" %} *</label>
       {{ form.title }}
       {% if form.title.errors %}<div class="text-danger small">{{ form.title.errors }}</div>{% endif %}
     </div>
-    <div class="col-12 col-md-6">
+    <div class="col-6">
       <label class="form-label" for="{{ form.subject.id_for_label }}">{% trans "Предмет" %} *</label>
       {{ form.subject }}
       {% if form.subject.errors %}<div class="text-danger small">{{ form.subject.errors }}</div>{% endif %}
@@ -32,12 +32,12 @@
 
   <!-- Row 2: Teacher + Student -->
   <div class="row g-3 mb-2">
-    <div class="col-12 col-md-6">
+    <div class="col-6">
       <label class="form-label" for="{{ form.teacher.id_for_label }}">{% trans "Преподаватель" %} *</label>
       {{ form.teacher }}
       {% if form.teacher.errors %}<div class="text-danger small">{{ form.teacher.errors }}</div>{% endif %}
     </div>
-    <div class="col-12 col-md-6">
+    <div class="col-6">
       <label class="form-label" for="{{ form.student.id_for_label }}">{% trans "Ученик" %} *</label>
       {{ form.student }}
       {% if form.student.errors %}<div class="text-danger small">{{ form.student.errors }}</div>{% endif %}
@@ -46,24 +46,40 @@
 
   <!-- Row 3: Date / Time / Duration -->
   <div class="row g-3 mb-2">
-    <div class="col-12 col-md-4">
+    <div class="col-3">
       <label class="form-label" for="{{ form.lesson_date.id_for_label }}">{% trans "Дата" %} *</label>
       {{ form.lesson_date }}
       {% if form.lesson_date.errors %}<div class="text-danger small">{{ form.lesson_date.errors }}</div>{% endif %}
     </div>
-    <div class="col-6 col-md-4">
+    <div class="col-3">
       <label class="form-label" for="{{ form.start_time.id_for_label }}">{% trans "Время" %} *</label>
       {{ form.start_time }}
       {% if form.start_time.errors %}<div class="text-danger small">{{ form.start_time.errors }}</div>{% endif %}
     </div>
-    <div class="col-6 col-md-4">
+    <div class="col-3">
       <label class="form-label" for="{{ form.duration_minutes.id_for_label }}">{% trans "Длительность" %} *</label>
       {{ form.duration_minutes }}
       {% if form.duration_minutes.errors %}<div class="text-danger small">{{ form.duration_minutes.errors }}</div>{% endif %}
     </div>
+    <div class="col-3"></div>
   </div>
 
-  <!-- Row 4: Teacher Materials + Zoom link on same line (materials first) -->
+  <!-- Row 3.1: Recurrence Controls (create only) -->
+  <div id="recurrenceControls" class="row g-3 mb-3" {% if object %}style="display:none"{% endif %}>
+    <div class="col-12">
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" id="id_repeat_weekly" name="repeat_weekly" {% if form.repeat_weekly.value %}checked{% endif %}>
+        <label class="form-check-label" for="id_repeat_weekly">{% trans "Повторять еженедельно" %}</label>
+      </div>
+    </div>
+    <div class="col-6" id="repeatWeeksWrapper" style="display:none">
+      <label class="form-label" for="id_repeat_weeks">{% trans "Количество недель" %}</label>
+      {{ form.repeat_weeks }}
+      <small class="text-muted d-block">{% trans "Сколько дополнительных недель создать (без учёта первой)." %}</small>
+    </div>
+  </div>
+
+  <!-- Row 4: Zoom link -->
   <div class="row g-3 mb-4">
     <div class="col-12 col-md-6 col-lg-5">
       <label class="form-label" for="{{ form.zoom_link.id_for_label }}">Zoom / Meet</label>
@@ -71,6 +87,9 @@
       {% if form.zoom_link.errors %}<div class="text-danger small">{{ form.zoom_link.errors }}</div>{% endif %}
     </div>
   </div>
+
+  <!-- Скрытое поле для таймзоны пользователя -->
+  <input type="hidden" name="user_timezone" id="user_timezone">
 
   <!-- Row 5: Teacher materials on its own line -->
   <div class="row g-3 mb-4">
@@ -91,11 +110,55 @@
 
   <div class="d-flex gap-2">
     <button type="submit" class="btn btn-primary">
-      <i class="bi bi-save"></i> {% if object %}{% trans "Сохранить" %}{% else %}{% trans "Создать" %}{% endif %}
+      {% if object %}{% trans "Сохранить" %}{% else %}{% trans "Создать" %}{% endif %}
     </button>
     <a href="{% url 'scheduling:lesson_list' %}" class="btn btn-outline-secondary">
-      <i class="bi bi-x-circle"></i> {% trans "Отмена" %}
+      {% trans "Отмена" %}
     </a>
   </div>
 </form>
+
+{% if not object %}
+<script>
+(function(){
+  const cb = document.getElementById('id_repeat_weekly');
+  const wrapper = document.getElementById('repeatWeeksWrapper');
+  function sync(){
+    if(!cb) return;
+    wrapper.style.display = cb.checked ? '' : 'none';
+  }
+  if(cb){
+    cb.addEventListener('change', sync);
+    // initial state
+    sync();
+  }
+})();
+</script>
+{% endif %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  var dateInput = document.getElementById('id_lesson_date');
+  if (dateInput && dateInput.showPicker) {
+    dateInput.addEventListener('click', function(e) {
+      dateInput.showPicker();
+    });
+  }
+});
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  var tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  document.getElementById('user_timezone').value = tz;
+});
+</script>
+<style>
+  /* Удаляем hover-эффект для поля даты */
+  input[type="date"].form-control:hover, input[type="date"].form-control:focus {
+    border-color: #e5e7eb;
+    background-color: #fff;
+    box-shadow: none;
+    cursor: pointer;
+    transition: none;
+  }
+</style>
 {% endblock %}
