@@ -158,6 +158,9 @@ class LessonForm(forms.ModelForm):
             end_datetime = local_start + timedelta(minutes=int(duration_minutes))
             cleaned_data['start_datetime'] = local_start
             cleaned_data['end_datetime'] = end_datetime
+            # Проверка: конец должен быть после начала
+            if end_datetime <= local_start:
+                raise forms.ValidationError("Время окончания занятия должно быть позже времени начала.")
             # Сравниваем с текущим временем в UTC
             current_time_utc = timezone.now().astimezone(ZoneInfo('UTC'))
             if start_datetime_utc < current_time_utc:
