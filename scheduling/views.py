@@ -812,9 +812,10 @@ def reschedule_lesson(request, lesson_id):
 
             # Проверка: нельзя переносить на прошедшее время
             current_time_utc = timezone.now().astimezone(ZoneInfo('UTC'))
+            is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
             if new_start_utc < current_time_utc:
                 error_msg = "Нельзя перенести занятие на прошедшее время (по вашему времени устройства)."
-                if request.is_ajax() or request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                if is_ajax:
                     return JsonResponse({'success': False, 'error': error_msg}, status=400)
                 messages.error(request, error_msg)
                 return redirect('scheduling:lesson_detail', pk=lesson_id)
