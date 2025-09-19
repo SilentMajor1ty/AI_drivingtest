@@ -13,7 +13,7 @@ from datetime import datetime, timedelta, time as dt_time
 from django.db.models import Q
 from django.conf import settings
 from .models import Lesson, Subject, Schedule, ProblemReport, LessonFile
-from .forms import LessonForm
+from .forms import LessonForm, check_lesson_conflicts
 from assignments.models import Notification
 from .models import LessonFeedback
 from django.db.models import Avg, Count
@@ -818,6 +818,19 @@ def reschedule_lesson(request, lesson_id):
                 if is_ajax:
                     return JsonResponse({'success': False, 'error': error_msg}, status=400)
                 messages.error(request, error_msg)
+                return redirect('scheduling:lesson_detail', pk=lesson_id)
+
+            # Проверка на пересечение с другими занятиями преподавателя
+            conflict_error = check_lesson_conflicts(
+                lesson.teacher,
+                new_start_utc,
+                new_end,
+                exclude_lesson_id=lesson.id
+            )
+            if conflict_error:
+                if is_ajax:
+                    return JsonResponse({'success': False, 'error': conflict_error}, status=400)
+                messages.error(request, conflict_error)
                 return redirect('scheduling:lesson_detail', pk=lesson_id)
 
             # Длительность сохраняем, если новый конец не передан
